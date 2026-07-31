@@ -1,0 +1,6 @@
+flask>=2.2
+requests>=2.28
+urllib3>=1.26
+keyring>=23.0
+pywebview>=4.0
+imageio-ffmpeg>=0.4.8

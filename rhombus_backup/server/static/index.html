@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rhombus Backup Buddy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">📹 <span id="app-title">Rhombus Backup Buddy</span></div>
+  <nav id="main-nav" class="hidden">
+    <button data-view="main" class="nav-btn active">Backup</button>
+    <button data-view="history" class="nav-btn">History</button>
+    <button data-view="settings" class="nav-btn">Settings</button>
+  </nav>
+</header>
+
+<main id="content">
+
+  <!-- ============================== WIZARD ============================== -->
+  <section id="view-wizard" class="view hidden">
+    <div class="card wizard-card">
+      <div class="wizard-steps" id="wizard-steps"></div>
+
+      <!-- Step 1: API key -->
+      <div class="wizard-pane" data-step="1">
+        <h2>Welcome! Let's connect to Rhombus</h2>
+        <p>Paste your Rhombus API key below. You can create one in the
+           Rhombus Console under <b>Settings &gt; API Management</b>.</p>
+        <input type="password" id="wiz-apikey" placeholder="Paste your API key here" autocomplete="off">
+        <div class="row">
+          <button id="wiz-test-btn" class="btn primary">Test Connection</button>
+          <span id="wiz-test-result" class="inline-status"></span>
+        </div>
+        <p class="fine-print">Your key is stored securely in this computer's
+           credential manager - never in a plain file.</p>
+      </div>
+
+      <!-- Step 2: destination -->
+      <div class="wizard-pane hidden" data-step="2">
+        <h2>Where should backups be saved?</h2>
+        <p>Pick a folder on a drive with plenty of space - an external drive or
+           a network drive (NAS) works great.</p>
+        <div class="row">
+          <input type="text" id="wiz-dest" placeholder="e.g. /Volumes/BackupDrive/CameraFootage">
+          <button id="wiz-browse-btn" class="btn">Choose Folder…</button>
+        </div>
+        <p id="wiz-freespace" class="inline-status"></p>
+      </div>
+
+      <!-- Step 3: cameras -->
+      <div class="wizard-pane hidden" data-step="3">
+        <h2>Which cameras should be backed up?</h2>
+        <p id="wiz-cam-loading">Loading your cameras…</p>
+        <div id="wiz-cam-list" class="camera-list"></div>
+      </div>
+
+      <!-- Step 4: schedule -->
+      <div class="wizard-pane hidden" data-step="4">
+        <h2>How often should backups run?</h2>
+        <div id="wiz-schedule" class="radio-list"></div>
+        <label class="check-line">
+          <input type="checkbox" id="wiz-os-sched">
+          Also run backups when this app is closed
+          <span class="hint">(adds a scheduled task to this computer)</span>
+        </label>
+      </div>
+
+      <!-- Step 5: retention -->
+      <div class="wizard-pane hidden" data-step="5">
+        <h2>How long should footage be kept?</h2>
+        <p>Older backups are deleted automatically to free space.</p>
+        <div class="row">
+          <span>Keep footage for</span>
+          <input type="number" id="wiz-retention" value="30" min="1" max="3650" style="width:90px">
+          <span>days</span>
+        </div>
+      </div>
+
+      <div class="wizard-nav">
+        <button id="wiz-back" class="btn hidden">Back</button>
+        <span class="spacer"></span>
+        <button id="wiz-next" class="btn primary" disabled>Next</button>
+      </div>
+      <p id="wiz-error" class="error-text"></p>
+    </div>
+  </section>
+
+  <!-- ============================== MAIN ============================== -->
+  <section id="view-main" class="view hidden">
+    <div class="card">
+      <div class="row space-between">
+        <h2>Back up footage</h2>
+        <span id="next-run-label" class="pill hidden"></span>
+      </div>
+      <div class="row">
+        <label>Time range:&nbsp;</label>
+        <select id="range-preset">
+          <option value="lastHour">Last hour</option>
+          <option value="last24h">Last 24 hours</option>
+          <option value="custom">Custom range…</option>
+        </select>
+        <span id="custom-range" class="hidden">
+          from <input type="datetime-local" id="range-start">
+          to <input type="datetime-local" id="range-end">
+        </span>
+      </div>
+      <p id="estimate-line" class="inline-status"></p>
+      <div class="row">
+        <button id="backup-btn" class="btn big-primary">▶ &nbsp;Back Up Now</button>
+        <button id="cancel-btn" class="btn danger hidden">Stop</button>
+      </div>
+      <p id="main-error" class="error-text"></p>
+    </div>
+
+    <div id="progress-card" class="card hidden">
+      <div class="row space-between">
+        <h3 id="progress-title">Backing up…</h3>
+        <span id="progress-overall" class="pill">0%</span>
+      </div>
+      <div class="progress-track"><div id="progress-overall-bar" class="progress-fill"></div></div>
+      <p id="progress-sub" class="inline-status"></p>
+      <div id="camera-progress"></div>
+    </div>
+
+    <div class="card">
+      <h3>Recent backups</h3>
+      <div id="recent-list" class="history-list compact"></div>
+    </div>
+  </section>
+
+  <!-- ============================== HISTORY ============================== -->
+  <section id="view-history" class="view hidden">
+    <div class="card">
+      <h2>Backup history</h2>
+      <div id="history-list" class="history-list"></div>
+    </div>
+  </section>
+
+  <!-- ============================== SETTINGS ============================== -->
+  <section id="view-settings" class="view hidden">
+    <div class="card">
+      <h2>Settings</h2>
+
+      <h3>Backup destination</h3>
+      <div class="row">
+        <input type="text" id="set-dest">
+        <button id="set-browse-btn" class="btn">Choose Folder…</button>
+      </div>
+      <p id="set-freespace" class="inline-status"></p>
+
+      <h3>Cameras</h3>
+      <div id="set-cam-list" class="camera-list"></div>
+
+      <h3>Schedule</h3>
+      <div id="set-schedule" class="radio-list"></div>
+      <label class="check-line">
+        <input type="checkbox" id="set-os-sched">
+        Also run backups when this app is closed
+        <span class="hint" id="set-os-sched-state"></span>
+      </label>
+
+      <h3>Retention</h3>
+      <div class="row">
+        <span>Keep footage for</span>
+        <input type="number" id="set-retention" min="1" max="3650" style="width:90px">
+        <span>days (older backups are deleted automatically)</span>
+      </div>
+
+      <h3>Network</h3>
+      <label class="check-line">
+        <input type="checkbox" id="set-lan">
+        This computer is on the same network as the cameras
+        <span class="hint">(uncheck if backing up from a remote office)</span>
+      </label>
+
+      <h3>API key</h3>
+      <div class="row">
+        <input type="password" id="set-apikey" placeholder="Paste a new key to replace the saved one" autocomplete="off">
+        <button id="set-test-btn" class="btn">Test</button>
+        <span id="set-test-result" class="inline-status"></span>
+      </div>
+
+      <details class="advanced">
+        <summary>Advanced</summary>
+        <div class="row">
+          <span>Simultaneous downloads</span>
+          <input type="number" id="set-threads" min="1" max="16" style="width:80px">
+          <span class="hint">Default 4 - higher values may hit Rhombus rate limits</span>
+        </div>
+        <p id="ffmpeg-status" class="inline-status"></p>
+        <button id="ffmpeg-install-btn" class="btn hidden">Install video component (FFmpeg)</button>
+      </details>
+
+      <div class="row" style="margin-top:20px">
+        <button id="set-save-btn" class="btn primary">Save Settings</button>
+        <span id="set-save-result" class="inline-status"></span>
+      </div>
+      <p id="set-error" class="error-text"></p>
+    </div>
+  </section>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
