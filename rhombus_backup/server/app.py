@@ -9,7 +9,7 @@ from flask import Flask, jsonify, request, send_from_directory
 
 from .. import __version__, APP_DISPLAY_NAME
 from ..core import config as config_mod
-from ..core import history, os_sched, space
+from ..core import fs_browse, history, os_sched, space
 from ..core.api import RhombusClient
 from ..core.config import SCHEDULE_CHOICES
 from ..core.errors import FriendlyError, friendly_exception
@@ -70,7 +70,22 @@ def create_app(service: AppService) -> Flask:
                 "osScheduleEnabled": cfg.os_schedule_enabled,
             },
             "osScheduleRegistered": os_sched.is_registered(),
+            "signinAvailable": service.signin_available(),
         })
+
+    # ---- Sign in with Rhombus ---------------------------------------------
+    @app.route("/api/oauth/start", methods=["POST"])
+    def oauth_start():
+        return jsonify({"ok": True, **service.start_signin()})
+
+    @app.route("/api/oauth/status")
+    def oauth_status():
+        return jsonify({"ok": True, **service.signin_status()})
+
+    @app.route("/api/oauth/cancel", methods=["POST"])
+    def oauth_cancel():
+        service.cancel_signin()
+        return jsonify({"ok": True})
 
     # ---- wizard ---------------------------------------------------------------
     @app.route("/api/test-key", methods=["POST"])
@@ -86,7 +101,7 @@ def create_app(service: AppService) -> Flask:
 
     @app.route("/api/cameras", methods=["POST"])
     def cameras():
-        key = (request.json or {}).get("apiKey") or service.api_key()
+        key = service.effective_api_key((request.json or {}).get("apiKey"))
         if not key:
             return jsonify({"ok": False, "error": "No API key available."}), 400
         try:
@@ -109,16 +124,30 @@ def create_app(service: AppService) -> Flask:
 
     @app.route("/api/browse-folder", methods=["POST"])
     def browse_folder():
+        """Native OS folder dialog. unsupported=True tells the UI to open the
+        built-in folder browser instead (cancelled=True means the user closed
+        the native dialog on purpose - no fallback wanted)."""
         if webview_window is None:
             return jsonify({"ok": True, "unsupported": True})
         try:
             import webview  # type: ignore
             result = webview_window.create_file_dialog(webview.FOLDER_DIALOG)
-            folder = result[0] if result else None
+            if not result:
+                return jsonify({"ok": True, "cancelled": True})
+            folder = result[0] if isinstance(result, (list, tuple)) else result
         except Exception as exc:  # noqa: BLE001
-            _log.warning("Folder dialog failed: %s", exc)
+            _log.warning("Native folder dialog failed, using built-in: %s", exc)
             return jsonify({"ok": True, "unsupported": True})
         return jsonify({"ok": True, "folder": folder})
+
+    @app.route("/api/list-folders", methods=["POST"])
+    def list_folders():
+        return jsonify({"ok": True, **fs_browse.list_folders((request.json or {}).get("path"))})
+
+    @app.route("/api/create-folder", methods=["POST"])
+    def create_folder():
+        body = request.json or {}
+        return jsonify(fs_browse.create_folder(body.get("parent", ""), body.get("name", "")))
 
     @app.route("/api/freespace", methods=["POST"])
     def freespace():

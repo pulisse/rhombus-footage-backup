@@ -86,6 +86,43 @@ Deliberate differences from the original script:
 - A bad API key returns **403** (observed), not 401; both map to the
   "key rejected" message.
 
+## "Sign in with Rhombus" (OAuth)
+
+`core/oauth.py` implements Rhombus's documented OAuth 2.0 Authorization Code +
+PKCE flow ("Sign in with Rhombus"), ending in a **minted permanent API key**:
+
+1. Loopback HTTP server on `127.0.0.1:53859` (the registered redirect URI is
+   `http://localhost:53859/callback` and must match exactly).
+2. System browser →
+   `https://console.rhombussystems.com/oauth/authorize` (PKCE S256 + `state`).
+3. Code exchange at `https://auth-web.rhombussystems.com/oauth/token`
+   (form-encoded, client id/secret in the body).
+4. Access token (`x-auth-scheme: api-oauth-token` / `x-auth-access-token`) →
+   `POST /api/integrations/org/submitApiTokenApplication`
+   `{displayName, authType: "API_TOKEN"}` → permanent `apiKey`.
+
+The minted key is parked server-side in `AppService.pending_api_key` (never
+sent to the browser UI) and moved into the OS keyring when the wizard/settings
+save. One-time setup for distributors:
+
+```bash
+python scripts/register_oauth_app.py   # needs any existing API key once
+```
+
+writes `oauth_client.json` (gitignored); the PyInstaller spec bundles it. No
+file → the sign-in button is hidden and paste-a-key remains. Note that
+client credentials shipped inside a desktop app are inspectable — PKCE +
+state protect the flow itself, and Rhombus requires review before wide
+distribution of an OAuth app. Refresh tokens are deliberately unused: the
+minted API key is the durable credential (per Rhombus's own guidance).
+
+## Folder picking
+
+`/api/browse-folder` tries the native pywebview dialog. If the app is running
+in browser-fallback mode, or the native dialog throws, the UI opens a built-in
+folder browser backed by `/api/list-folders` + `/api/create-folder`
+(`core/fs_browse.py`) - directory names only, localhost only.
+
 ## Development
 
 ```bash

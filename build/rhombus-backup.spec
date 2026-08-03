@@ -9,6 +9,13 @@ static_dir = project_root / "rhombus_backup" / "server" / "static"
 
 datas = [(str(static_dir), "rhombus_backup/server/static")]
 
+# "Sign in with Rhombus" client credentials (created once by
+# scripts/register_oauth_app.py). Optional: without it the app still works
+# via the paste-an-API-key flow.
+oauth_file = project_root / "oauth_client.json"
+if oauth_file.exists():
+    datas.append((str(oauth_file), "."))
+
 # If a platform ffmpeg binary was placed in build/bin/, bundle it so users
 # never install anything themselves (see build/README-ffmpeg.txt).
 ffmpeg_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"

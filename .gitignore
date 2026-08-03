@@ -7,3 +7,4 @@ build/tmp/
 build/bin/
 .pytest_cache/
 .DS_Store
+oauth_client.json

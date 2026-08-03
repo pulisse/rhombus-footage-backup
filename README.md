@@ -20,15 +20,22 @@ drive), or this computer. It can run on a schedule so backups happen automatical
 
 > *[screenshot placeholder: setup wizard, step 1]*
 
-### Getting your API key
+### Connecting to Rhombus
 
+**Easiest: click "Sign in with Rhombus."** Your normal Rhombus login page opens
+in your browser; sign in as usual and the app sets up its own access
+automatically — nothing to copy or paste. (Your Rhombus account needs
+permission to create API keys; if it doesn't, ask your administrator or use
+the paste-a-key option below.)
+
+**Or paste an API key:**
 1. Sign in to the [Rhombus Console](https://console.rhombussystems.com).
 2. Go to **Settings → API Management** and click **Add API Key** (give it video access).
 3. Copy the key and paste it into the app when asked. Click **Test Connection** —
    you should see your organization name and camera count.
 
-Your key is stored in your computer's secure credential store (Windows
-Credential Manager / macOS Keychain). It is never saved in a plain file.
+Either way, access is stored in your computer's secure credential store
+(Windows Credential Manager / macOS Keychain). It is never saved in a plain file.
 
 ---
 
@@ -63,6 +70,12 @@ Every file plays in any normal video player.
 ---
 
 ## FAQ / Troubleshooting
+
+**"Sign in with Rhombus" fails or the button is missing.**
+The button appears only in builds where sign-in has been set up by whoever
+distributes the app. You can always use the paste-a-key option instead — it
+does exactly the same thing. If sign-in says your account can't create keys,
+ask your Rhombus administrator.
 
 **"Your API key was rejected."**
 The key was deleted, expired, or copied incorrectly. Create a fresh key in the

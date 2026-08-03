@@ -13,6 +13,7 @@ from .config import AppConfig
 from .downloader import BackupRun
 from .errors import FriendlyError, friendly_exception
 from .ffmpeg_utils import find_ffmpeg, ensure_ffmpeg
+from .oauth import SignInFlow, client_config as oauth_client_config
 
 _log = logging.getLogger("rhombus.service")
 
@@ -26,6 +27,57 @@ class AppService:
         self._scheduler_stop = threading.Event()
         self._scheduler_thread: Optional[threading.Thread] = None
         self.next_scheduled: Optional[float] = None  # epoch
+        # Sign in with Rhombus: minted key parks here until the wizard/settings
+        # save it to the keyring - it is never sent to the browser UI.
+        self.signin_flow: Optional[SignInFlow] = None
+        self.pending_api_key: Optional[str] = None
+        self.pending_org: Optional[dict] = None
+
+    # -- Sign in with Rhombus -------------------------------------------------
+    @staticmethod
+    def signin_available() -> bool:
+        return oauth_client_config() is not None
+
+    def start_signin(self) -> dict:
+        if self.signin_flow and self.signin_flow.state in ("waiting", "exchanging", "minting"):
+            return self.signin_status()
+        flow = SignInFlow()
+        self.signin_flow = flow
+        self.pending_api_key = None
+        self.pending_org = None
+
+        def _work():
+            try:
+                key = flow.run()
+                org = RhombusClient(key).test_connection()
+                self.pending_api_key = key
+                self.pending_org = org
+            except FriendlyError:
+                pass  # flow.state/error already carry the friendly message
+            except Exception as exc:  # noqa: BLE001
+                fe = friendly_exception(exc, use_wan=True)
+                flow.state, flow.error = "failed", str(fe)
+                _log.exception("Sign-in flow crashed")
+
+        threading.Thread(target=_work, daemon=True, name="rhombus-signin").start()
+        return self.signin_status()
+
+    def signin_status(self) -> dict:
+        if not self.signin_flow:
+            return {"state": "idle", "error": "", "org": None}
+        snap = self.signin_flow.snapshot()
+        # "done" for the UI means the key is validated AND parked, not just minted.
+        if snap["state"] == "done" and not self.pending_org:
+            snap["state"] = "minting"
+        return {"state": snap["state"], "error": snap["error"], "org": self.pending_org}
+
+    def cancel_signin(self):
+        if self.signin_flow:
+            self.signin_flow.cancel()
+
+    def effective_api_key(self, explicit: Optional[str] = None) -> Optional[str]:
+        """Key preference order: caller-supplied > freshly signed-in > saved."""
+        return explicit or self.pending_api_key or self.api_key()
 
     # -- config ------------------------------------------------------------
     def save_config(self, updates: dict, api_key: Optional[str] = None) -> List[str]:
@@ -37,6 +89,11 @@ class AppService:
             return problems
         if api_key:
             config_mod.set_api_key(api_key)
+        elif self.pending_api_key:
+            # Adopt the key minted by "Sign in with Rhombus".
+            config_mod.set_api_key(self.pending_api_key)
+            self.pending_api_key = None
+            self.pending_org = None
         config_mod.save(self.cfg)
         if self.cfg.os_schedule_enabled:
             try:

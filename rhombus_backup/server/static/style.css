@@ -151,3 +151,37 @@ input[type=text], input[type=password] { flex: 1; min-width: 240px; }
 
 details.advanced { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 12px; }
 details.advanced summary { cursor: pointer; color: var(--muted); font-weight: 600; }
+
+/* "or" divider between sign-in and paste-a-key */
+.divider {
+  display: flex; align-items: center; gap: 12px; margin: 18px 0;
+  color: var(--muted); font-size: 13px;
+}
+.divider::before, .divider::after {
+  content: ""; flex: 1; height: 1px; background: var(--line);
+}
+
+/* built-in folder browser modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center; z-index: 50;
+}
+.modal {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 20px 24px; width: min(560px, 92vw); max-height: 86vh;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.modal h3 { margin: 0 0 8px; }
+.fb-path {
+  font-size: 12.5px; color: var(--muted); padding: 4px 2px;
+  overflow-wrap: anywhere;
+}
+.fb-list { max-height: 300px; min-height: 160px; }
+.fb-entry {
+  display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+  cursor: pointer; border-top: 1px solid var(--line); font-size: 14px;
+}
+.fb-entry:first-child { border-top: none; }
+.fb-entry:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.fb-empty { padding: 18px 14px; color: var(--muted); font-size: 13.5px; }
+#fb-places { max-width: 220px; }

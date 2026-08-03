@@ -23,17 +23,28 @@
     <div class="card wizard-card">
       <div class="wizard-steps" id="wizard-steps"></div>
 
-      <!-- Step 1: API key -->
+      <!-- Step 1: connect -->
       <div class="wizard-pane" data-step="1">
         <h2>Welcome! Let's connect to Rhombus</h2>
-        <p>Paste your Rhombus API key below. You can create one in the
+
+        <div id="wiz-signin-block" class="hidden">
+          <p>Sign in with your usual Rhombus account - the app sets up its own
+             access automatically.</p>
+          <div class="row">
+            <button id="wiz-signin-btn" class="btn big-primary">Sign in with Rhombus</button>
+          </div>
+          <p id="wiz-signin-status" class="inline-status"></p>
+          <div class="divider"><span>or</span></div>
+        </div>
+
+        <p>Paste a Rhombus API key. You can create one in the
            Rhombus Console under <b>Settings &gt; API Management</b>.</p>
         <input type="password" id="wiz-apikey" placeholder="Paste your API key here" autocomplete="off">
         <div class="row">
           <button id="wiz-test-btn" class="btn primary">Test Connection</button>
           <span id="wiz-test-result" class="inline-status"></span>
         </div>
-        <p class="fine-print">Your key is stored securely in this computer's
+        <p class="fine-print">Access is stored securely in this computer's
            credential manager - never in a plain file.</p>
       </div>
 
@@ -175,7 +186,13 @@
         <span class="hint">(uncheck if backing up from a remote office)</span>
       </label>
 
-      <h3>API key</h3>
+      <h3>Rhombus access</h3>
+      <div id="set-signin-block" class="hidden">
+        <div class="row">
+          <button id="set-signin-btn" class="btn">Sign in with Rhombus again</button>
+          <span id="set-signin-status" class="inline-status"></span>
+        </div>
+      </div>
       <div class="row">
         <input type="password" id="set-apikey" placeholder="Paste a new key to replace the saved one" autocomplete="off">
         <button id="set-test-btn" class="btn">Test</button>
@@ -201,6 +218,26 @@
     </div>
   </section>
 </main>
+
+<!-- Built-in folder browser (fallback when the native dialog is unavailable) -->
+<div id="folder-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <h3>Choose a backup folder</h3>
+    <div class="row">
+      <select id="fb-places"></select>
+      <button id="fb-up" class="btn" title="Go up one level">⬆ Up</button>
+    </div>
+    <div id="fb-current" class="fb-path"></div>
+    <div id="fb-list" class="camera-list fb-list"></div>
+    <p id="fb-info" class="inline-status"></p>
+    <div class="row">
+      <button id="fb-newfolder" class="btn">New Folder…</button>
+      <span class="spacer"></span>
+      <button id="fb-cancel" class="btn">Cancel</button>
+      <button id="fb-select" class="btn primary">Use This Folder</button>
+    </div>
+  </div>
+</div>
 
 <script src="/static/app.js"></script>
 </body>

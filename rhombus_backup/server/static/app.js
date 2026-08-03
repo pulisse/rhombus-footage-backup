@@ -67,8 +67,46 @@ function initWizard() {
   }
   renderScheduleRadios($("wiz-schedule"), STATE.config.schedule);
   $("wiz-retention").value = STATE.config.retentionDays || 30;
+  $("wiz-signin-block").classList.toggle("hidden", !STATE.signinAvailable);
   showWizStep(1);
 }
+
+/* -- Sign in with Rhombus (shared by wizard + settings) -- */
+async function runSignIn(statusEl, onSuccess) {
+  statusEl.className = "inline-status";
+  statusEl.textContent = "Opening your browser - sign in there…";
+  const start = await api("/api/oauth/start", {});
+  if (!start.ok) { statusEl.className = "inline-status bad"; statusEl.textContent = start.error; return; }
+  const labels = {
+    waiting: "Waiting for you to sign in in the browser…",
+    exchanging: "Finishing sign-in…",
+    minting: "Setting up this app's access…",
+  };
+  while (true) {
+    await new Promise((r) => setTimeout(r, 1200));
+    const s = await api("/api/oauth/status");
+    if (!s.ok) continue;
+    if (s.state === "done" && s.org) {
+      statusEl.className = "inline-status good";
+      statusEl.textContent = `✓ Connected to ${s.org.orgName} - ${s.org.cameraCount} camera${s.org.cameraCount === 1 ? "" : "s"} (${s.org.onlineCount} online)`;
+      onSuccess(s.org);
+      return;
+    }
+    if (s.state === "failed") {
+      statusEl.className = "inline-status bad";
+      statusEl.textContent = s.error || "Sign-in didn't complete. Try again.";
+      return;
+    }
+    statusEl.textContent = labels[s.state] || "Working…";
+  }
+}
+
+$("wiz-signin-btn").addEventListener("click", () =>
+  runSignIn($("wiz-signin-status"), () => {
+    wiz.keyOk = true;      // key is parked server-side; never sent to this page
+    wiz.apiKey = "";
+    validateWizStep();
+  }));
 
 function showWizStep(n) {
   wiz.step = n;
@@ -111,11 +149,78 @@ $("wiz-test-btn").addEventListener("click", async () => {
 
 async function pickFolder(inputEl, statusEl) {
   const r = await api("/api/browse-folder", {});
-  if (r.folder) inputEl.value = r.folder;
-  else if (r.unsupported) inputEl.placeholder = "Type or paste the folder path here";
+  if (r.folder) {
+    inputEl.value = r.folder;
+  } else if (r.cancelled) {
+    return; // user closed the native dialog on purpose
+  } else {
+    // Native dialog unavailable (browser mode or it failed): built-in browser.
+    const chosen = await openFolderModal(inputEl.value.trim());
+    if (!chosen) return;
+    inputEl.value = chosen;
+  }
   inputEl.dispatchEvent(new Event("input"));
   if (statusEl) updateFreeSpace(inputEl, statusEl);
 }
+
+/* ---------------- built-in folder browser ---------------- */
+const fb = { current: null, resolve: null };
+
+function openFolderModal(startPath) {
+  $("folder-modal").classList.remove("hidden");
+  fbNavigate(startPath || null);
+  return new Promise((resolve) => { fb.resolve = resolve; });
+}
+function closeFolderModal(result) {
+  $("folder-modal").classList.add("hidden");
+  if (fb.resolve) { fb.resolve(result); fb.resolve = null; }
+}
+
+async function fbNavigate(path) {
+  const r = await api("/api/list-folders", { path });
+  if (!r.ok) return;
+  fb.current = r.current;
+  fb.parent = r.parent;
+  $("fb-current").textContent = r.current;
+  $("fb-up").disabled = !r.parent;
+  $("fb-info").className = "inline-status" + (r.error ? " warn" : "");
+  $("fb-info").textContent = r.error ||
+    `Free space here: ${r.freeHuman}` + (r.writable ? "" : " · ⚠ you can't save into this folder");
+  $("fb-select").disabled = !r.writable;
+
+  const places = $("fb-places");
+  places.innerHTML = "<option value=''>Go to…</option>";
+  r.places.forEach((p) => {
+    const o = document.createElement("option");
+    o.value = p.path; o.textContent = p.name;
+    places.appendChild(o);
+  });
+
+  const list = $("fb-list");
+  list.innerHTML = "";
+  if (!r.folders.length) {
+    list.innerHTML = "<div class='fb-empty'>No folders inside - you can use this one, or create a new folder.</div>";
+  }
+  r.folders.forEach((f) => {
+    const div = document.createElement("div");
+    div.className = "fb-entry";
+    div.textContent = "📁 " + f.name;
+    div.addEventListener("click", () => fbNavigate(f.path));
+    list.appendChild(div);
+  });
+}
+
+$("fb-up").addEventListener("click", () => fb.parent && fbNavigate(fb.parent));
+$("fb-places").addEventListener("change", (e) => { if (e.target.value) fbNavigate(e.target.value); });
+$("fb-cancel").addEventListener("click", () => closeFolderModal(null));
+$("fb-select").addEventListener("click", () => closeFolderModal(fb.current));
+$("fb-newfolder").addEventListener("click", async () => {
+  const name = prompt("Name for the new folder:");
+  if (!name) return;
+  const r = await api("/api/create-folder", { parent: fb.current, name });
+  if (!r.ok) { $("fb-info").className = "inline-status bad"; $("fb-info").textContent = r.error; return; }
+  fbNavigate(r.path);
+});
 $("wiz-browse-btn").addEventListener("click", () => pickFolder($("wiz-dest"), $("wiz-freespace")));
 $("wiz-dest").addEventListener("input", () => { validateWizStep(); });
 $("wiz-dest").addEventListener("change", () => updateFreeSpace($("wiz-dest"), $("wiz-freespace")));
@@ -398,6 +503,7 @@ const setCams = new Set();
 
 async function initSettings() {
   const c = STATE.config;
+  $("set-signin-block").classList.toggle("hidden", !STATE.signinAvailable);
   $("set-dest").value = c.destination;
   $("set-retention").value = c.retentionDays;
   $("set-threads").value = c.threads;
@@ -427,6 +533,12 @@ async function initSettings() {
 
 $("set-browse-btn").addEventListener("click", () => pickFolder($("set-dest"), $("set-freespace")));
 $("set-dest").addEventListener("change", () => updateFreeSpace($("set-dest"), $("set-freespace")));
+
+$("set-signin-btn").addEventListener("click", () =>
+  runSignIn($("set-signin-status"), async () => {
+    // Persist the freshly minted key right away (empty update adopts it).
+    await api("/api/config", {});
+  }));
 
 $("set-test-btn").addEventListener("click", async () => {
   const key = $("set-apikey").value.trim();

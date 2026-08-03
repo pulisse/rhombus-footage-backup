@@ -5,6 +5,20 @@ Items marked ⚠ verify assumptions that could not be tested without a real org.
 
 ## Setup wizard
 - [ ] Launch app fresh (delete the config dir first) → wizard appears.
+- [ ] ⚠ **Sign in with Rhombus** (needs `oauth_client.json` from
+      `scripts/register_oauth_app.py`): button opens the default browser at the
+      Rhombus consent page; after approving, the tab says "You're signed in",
+      the wizard shows org name + camera count, and a new API key named
+      "Rhombus Backup Buddy (<hostname>)" appears in Console → API Management.
+- [ ] Sign-in with an account that lacks API-key permission → friendly
+      "ask your Rhombus administrator" message; paste-a-key path still works.
+- [ ] Cancel the consent page / let it time out (5 min) → app shows a friendly
+      timeout, not a hang; retry works without restarting.
+- [ ] Choose Folder in the **native window**: OS folder dialog opens; Cancel
+      does nothing; choosing fills the path + free space.
+- [ ] Choose Folder in **browser mode** (`python dev_server.py`): built-in
+      folder browser opens; Go to… shortcuts, Up, New Folder…, and
+      "Use This Folder" all work; read-only folders disable the select button.
 - [ ] Paste a **bad** key → Test Connection shows the "key was rejected /
       no permission" message, Next stays disabled.
 - [ ] Paste a **good** key → shows org name ⚠ and camera count; Next enables.
