@@ -520,6 +520,10 @@ async function initSettings() {
     ? "✓ Video component (FFmpeg): installed"
     : "✕ Video component (FFmpeg) is missing - backups can't finish without it.";
   $("ffmpeg-install-btn").classList.toggle("hidden", STATE.ffmpegOk);
+  $("signin-config-status").textContent = STATE.signinAvailable
+    ? "✓ 'Sign in with Rhombus' is set up for this build."
+    : "'Sign in with Rhombus' isn't set up for this build (needs oauth_client.json "
+      + "from scripts/register_oauth_app.py), so only the paste-a-key option is shown.";
 
   setCams.clear();
   (c.cameraUuids || []).forEach((id) => setCams.add(id));
