@@ -127,7 +127,7 @@
 
     <div id="progress-card" class="card hidden">
       <div class="row space-between">
-        <h3 id="progress-title">Backing up…</h3>
+        <h3 id="progress-title"><span id="progress-spinner" class="spinner hidden"></span><span id="progress-title-text">Backing up…</span></h3>
         <span id="progress-overall" class="pill">0%</span>
       </div>
       <div class="progress-track"><div id="progress-overall-bar" class="progress-fill"></div></div>
@@ -152,7 +152,13 @@
   <!-- ============================== SETTINGS ============================== -->
   <section id="view-settings" class="view hidden">
     <div class="card">
-      <h2>Settings</h2>
+      <div class="row space-between">
+        <h2>Settings</h2>
+        <span class="row" style="margin:0">
+          <span id="set-save-result-top" class="inline-status"></span>
+          <button id="set-save-btn-top" class="btn primary">Save Settings</button>
+        </span>
+      </div>
 
       <h3>Backup destination</h3>
       <div class="row">

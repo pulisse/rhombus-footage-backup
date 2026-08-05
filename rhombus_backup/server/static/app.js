@@ -498,17 +498,15 @@ async function pollStatus() {
   $("progress-card").classList.toggle("hidden", !run);
   if (!run) return;
 
-  const title = $("progress-title");
-  title.innerHTML = "";
-  if (running) {
-    const sp = document.createElement("span");
-    sp.className = "spinner";
-    title.appendChild(sp);
-  }
-  title.appendChild(document.createTextNode({
+  // The spinner element persists across polls - recreating it every second
+  // restarts its CSS animation and makes it stutter.
+  $("progress-spinner").classList.toggle("hidden", !running);
+  const titleText = {
     running: "Backing up…", done: "Backup finished", failed: "Backup failed",
     cancelled: "Backup stopped", pending: "Starting…",
-  }[run.state] || run.state));
+  }[run.state] || run.state;
+  const titleEl = $("progress-title-text");
+  if (titleEl.textContent !== titleText) titleEl.textContent = titleText;
   $("progress-overall").textContent = run.overallPercent + "%";
   const overallBar = $("progress-overall-bar");
   overallBar.style.width = run.overallPercent + "%";
@@ -528,43 +526,63 @@ async function pollStatus() {
     ` · ${human(run.bytes)} downloaded · ${doneCams}/${run.cameras.length} cameras done` +
     (failedCams ? ` · ${failedCams} failed` : "") + eta;
 
+  renderCameraProgress(run);
+
+  if (!running && run.state !== "pending") loadHistory("recent-list", true);
+}
+
+/* Per-camera progress rows are updated IN PLACE (keyed by camera uuid) so the
+   CSS animations - striped fills, indeterminate sweeps - run continuously
+   instead of restarting on every 1-second poll. */
+function renderCameraProgress(run) {
   const box = $("camera-progress");
-  box.innerHTML = "";
+  const seen = new Set();
   run.cameras.forEach((c) => {
-    const div = document.createElement("div");
-    div.className = "cam-progress";
-    const row = document.createElement("div");
-    row.className = "row space-between";
-    const nm = document.createElement("span");
-    nm.className = "name"; nm.textContent = c.name;
-    const st = document.createElement("span");
-    st.className = "state " + c.status;
-    st.textContent = {
+    seen.add(c.uuid);
+    let div = box.querySelector(`[data-uuid="${CSS.escape(c.uuid)}"]`);
+    if (!div) {
+      div = document.createElement("div");
+      div.className = "cam-progress";
+      div.dataset.uuid = c.uuid;
+      const row = document.createElement("div");
+      row.className = "row space-between";
+      const nm = document.createElement("span");
+      nm.className = "name"; nm.textContent = c.name;
+      const st = document.createElement("span");
+      st.className = "state";
+      row.append(nm, st);
+      const track = document.createElement("div");
+      track.className = "progress-track";
+      const fill = document.createElement("div");
+      fill.className = "progress-fill";
+      track.appendChild(fill);
+      div.append(row, track);
+      box.appendChild(div);
+    }
+    const st = div.querySelector(".state");
+    const stateClass = "state " + c.status;
+    if (st.className !== stateClass) st.className = stateClass;
+    const text = {
       queued: "waiting…", downloading: `${c.percent}% · ${human(c.bytes)}`,
       audio: "downloading audio…", merging: "packaging video…",
       done: "✓ saved " + human(c.bytes),
       failed: c.error, skipped: "skipped",
     }[c.status] || c.status;
-    row.appendChild(nm); row.appendChild(st);
-    div.appendChild(row);
-    if (["downloading", "audio", "merging", "queued"].includes(c.status)) {
-      const track = document.createElement("div");
-      track.className = "progress-track";
-      const fill = document.createElement("div");
-      if (c.status === "downloading") {
-        fill.className = "progress-fill active";
-        fill.style.width = c.percent + "%";
-      } else {
-        // queued (waiting to start) and merging (packaging) both sweep
-        fill.className = "progress-fill indeterminate";
-      }
-      track.appendChild(fill);
-      div.appendChild(track);
-    }
-    box.appendChild(div);
-  });
+    if (st.textContent !== text) st.textContent = text;
 
-  if (!running && run.state !== "pending") loadHistory("recent-list", true);
+    const track = div.querySelector(".progress-track");
+    const fill = div.querySelector(".progress-fill");
+    const showBar = ["downloading", "audio", "merging", "queued"].includes(c.status);
+    track.classList.toggle("hidden", !showBar);
+    let fillClass = "progress-fill";
+    if (c.status === "downloading") fillClass += " active";
+    else if (showBar) fillClass += " indeterminate"; // queued/audio/merging sweep
+    if (fill.className !== fillClass) fill.className = fillClass;
+    if (c.status === "downloading") fill.style.width = c.percent + "%";
+  });
+  [...box.children].forEach((el) => {
+    if (!seen.has(el.dataset.uuid)) el.remove(); // rows from a previous run
+  });
 }
 
 /* ================= HISTORY ================= */
@@ -687,9 +705,13 @@ $("ffmpeg-install-btn").addEventListener("click", async () => {
   if (r.ok) $("ffmpeg-install-btn").classList.add("hidden");
 });
 
-$("set-save-btn").addEventListener("click", async () => {
+async function saveSettings() {
   $("set-error").textContent = "";
-  const out = $("set-save-result");
+  const outs = [$("set-save-result"), $("set-save-result-top")];
+  const out = {
+    set className(v) { outs.forEach((o) => { o.className = v; }); },
+    set textContent(v) { outs.forEach((o) => { o.textContent = v; }); },
+  };
   out.textContent = "Saving…";
   const body = {
     destination: $("set-dest").value.trim(),
@@ -720,6 +742,8 @@ $("set-save-btn").addEventListener("click", async () => {
   $("set-smtp-pass").value = "";
   STATE = await api("/api/state");
   setTimeout(() => { out.textContent = ""; }, 2500);
-});
+}
+$("set-save-btn").addEventListener("click", saveSettings);
+$("set-save-btn-top").addEventListener("click", saveSettings);
 
 boot();
