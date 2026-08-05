@@ -11,9 +11,9 @@ import sys
 import threading
 import webbrowser
 
-from . import APP_DISPLAY_NAME
-from .core import paths
-from .core.service import AppService
+from rhombus_backup import APP_DISPLAY_NAME
+from rhombus_backup.core import paths
+from rhombus_backup.core.service import AppService
 
 
 def _setup_logging():
@@ -52,8 +52,8 @@ def run_headless() -> int:
 
 
 def run_gui() -> int:
-    from .server import app as server_mod
-    from .server.app import create_app
+    from rhombus_backup.server import app as server_mod
+    from rhombus_backup.server.app import create_app
 
     service = AppService()
     service.start_scheduler()
