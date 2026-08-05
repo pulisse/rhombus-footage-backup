@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rhombus Backup Buddy — Back up your camera footage to your own drive</title>
+<meta name="description" content="Rhombus Backup Buddy downloads footage from your Rhombus cameras and saves it as normal video files on any drive you choose. Runs on a schedule, cleans up after itself, no technical skills needed.">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --text: #16212b;
+    --text-soft: #52616e;
+    --accent: #0e7490;
+    --accent-hover: #0c637c;
+    --accent-soft: #e0f2f7;
+    --border: #e2e8f0;
+    --code-bg: #0f172a;
+    --code-text: #cbd5e1;
+    --card: #ffffff;
+    --shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 4px 16px rgba(15, 23, 42, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1220;
+      --bg-soft: #101a2c;
+      --text: #e6edf5;
+      --text-soft: #93a3b5;
+      --accent: #22b8d4;
+      --accent-hover: #4ecbe2;
+      --accent-soft: #0e2a38;
+      --border: #1e2c42;
+      --code-bg: #0a0f1a;
+      --code-text: #b6c2d4;
+      --card: #101a2c;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+  /* Hero */
+  header { padding: 72px 0 56px; text-align: center; }
+  .badge {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 999px;
+    padding: 4px 14px;
+    margin-bottom: 20px;
+  }
+  h1 { font-size: clamp(32px, 5vw, 48px); line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 16px; }
+  .tagline { font-size: clamp(17px, 2.5vw, 20px); color: var(--text-soft); max-width: 620px; margin: 0 auto 32px; }
+  .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 16px; font-weight: 600; text-decoration: none;
+    padding: 12px 24px; border-radius: 10px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .cta-note { font-size: 13px; color: var(--text-soft); margin-top: 14px; }
+
+  /* Sections */
+  section { padding: 56px 0; }
+  section.alt { background: var(--bg-soft); }
+  h2 { font-size: 28px; letter-spacing: -0.01em; margin-bottom: 8px; text-align: center; }
+  .section-sub { text-align: center; color: var(--text-soft); margin-bottom: 40px; }
+
+  /* Steps */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+  .step {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 24px; box-shadow: var(--shadow);
+  }
+  .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-weight: 700; font-size: 15px;
+    margin-bottom: 14px;
+  }
+  .step h3 { font-size: 17px; margin-bottom: 6px; }
+  .step p { font-size: 15px; color: var(--text-soft); }
+
+  /* Features */
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+  .feature {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 22px 24px; box-shadow: var(--shadow);
+  }
+  .feature .icon { font-size: 24px; margin-bottom: 10px; }
+  .feature h3 { font-size: 16px; margin-bottom: 6px; }
+  .feature p { font-size: 14.5px; color: var(--text-soft); }
+
+  /* Folder layout */
+  .code-card {
+    background: var(--code-bg); color: var(--code-text);
+    border-radius: 14px; padding: 24px 28px;
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 14px; line-height: 1.7;
+    overflow-x: auto; box-shadow: var(--shadow);
+    max-width: 640px; margin: 0 auto;
+  }
+  .code-card .dim { opacity: 0.55; }
+
+  /* FAQ */
+  .faq { max-width: 720px; margin: 0 auto; }
+  details {
+    border: 1px solid var(--border); border-radius: 12px;
+    background: var(--card); margin-bottom: 12px; padding: 0 20px;
+  }
+  summary {
+    cursor: pointer; font-weight: 600; font-size: 15.5px;
+    padding: 16px 0; list-style: none; position: relative; padding-right: 28px;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after {
+    content: "+"; position: absolute; right: 4px; top: 50%;
+    transform: translateY(-50%); font-size: 20px; color: var(--text-soft); font-weight: 400;
+  }
+  details[open] summary::after { content: "–"; }
+  details p { font-size: 14.5px; color: var(--text-soft); padding-bottom: 16px; }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 0 48px; text-align: center;
+    font-size: 13.5px; color: var(--text-soft);
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <span class="badge">Free · Mac &amp; Windows</span>
+    <h1>Rhombus Backup Buddy</h1>
+    <p class="tagline">Back up your Rhombus camera footage to your own drive — an external disk, a NAS, or this computer. Automatic schedules, plain MP4 files, no technical skills needed.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/pulisse/rhombus-footage-backup/releases/latest" id="dl-mac">&#63743;&nbsp; Download for Mac</a>
+      <a class="btn btn-primary" href="https://github.com/pulisse/rhombus-footage-backup/releases/latest" id="dl-win">&#11036;&nbsp; Download for Windows</a>
+      <a class="btn btn-secondary" href="https://github.com/pulisse/rhombus-footage-backup">View on GitHub</a>
+    </div>
+    <p class="cta-note">Setup takes about 2 minutes. You'll sign in with Rhombus or paste an API key.</p>
+  </div>
+</header>
+
+<section class="alt">
+  <div class="wrap">
+    <h2>Install in 3 steps</h2>
+    <p class="section-sub">From download to first backup in a couple of minutes.</p>
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">1</span>
+        <h3>Download &amp; open</h3>
+        <p>Grab the app for your computer. On a Mac, right-click → Open the first time. On Windows, click "More info → Run anyway" if SmartScreen asks.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">2</span>
+        <h3>Connect to Rhombus</h3>
+        <p>Click <strong>Sign in with Rhombus</strong> — your normal login page opens and the app sets up its own access. Or paste an API key from the Rhombus Console.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">3</span>
+        <h3>Pick a folder &amp; go</h3>
+        <p>Choose where footage should land, pick a schedule, and click <strong>Back Up Now</strong>. You'll see a progress bar per camera.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>What it does</h2>
+    <p class="section-sub">Set it up once — it takes care of itself.</p>
+    <div class="features">
+      <div class="feature">
+        <div class="icon">🕐</div>
+        <h3>Automatic backups</h3>
+        <p>Every hour, daily at midnight — your choice. Enable background mode and backups run even when the app is closed, via Task Scheduler or launchd.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🎬</div>
+        <h3>Plain video files</h3>
+        <p>Footage is saved as normal MP4s, organized by date and camera. Every file plays in any video player — no proprietary formats, no lock-in.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🧹</div>
+        <h3>Cleans up after itself</h3>
+        <p>Files older than your retention setting (default 30 days) are deleted automatically, so the drive never silently fills up.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🔔</div>
+        <h3>Notifications</h3>
+        <p>Get a message in Slack, Microsoft Teams, Google Chat, or email after every backup — or only when something fails.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🔒</div>
+        <h3>Credentials stay secure</h3>
+        <p>Your API access is stored in the Windows Credential Manager or macOS Keychain — never in a plain file.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🛟</div>
+        <h3>Fault tolerant</h3>
+        <p>A problem with one camera never stops the rest. The History tab shows exactly what was backed up, and what failed and why.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <h2>Where your videos go</h2>
+    <p class="section-sub">Inside the folder you chose — tidy, dated, and readable.</p>
+    <div class="code-card">
+Backups/<br>
+&nbsp;&nbsp;2026-07-31/<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Front Door/<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;FrontDoor_2026-07-31_14-00.mp4<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Loading Dock/<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;LoadingDock_2026-07-31_14-00.mp4<br>
+&nbsp;&nbsp;&nbsp;&nbsp;manifest_a1b2c3.json&nbsp;&nbsp;&nbsp;<span class="dim">← a small receipt of what was backed up</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Common questions</h2>
+    <p class="section-sub"></p>
+    <div class="faq">
+      <details>
+        <summary>How much disk space do I need?</summary>
+        <p>Plan for roughly 1.5 GB per camera per day. The app checks free space before every backup and refuses to start if the drive would fill up.</p>
+      </details>
+      <details>
+        <summary>Does the app need to stay open?</summary>
+        <p>Only for in-app schedules. If you enable "Also run backups when this app is closed", the backup registers with Windows Task Scheduler or macOS launchd and runs on its own.</p>
+      </details>
+      <details>
+        <summary>Do I need to be on the same network as the cameras?</summary>
+        <p>No. If you are, keep the same-network option checked for much faster direct downloads. If you're backing up from elsewhere, uncheck it and footage comes via the Rhombus cloud.</p>
+      </details>
+      <details>
+        <summary>What do I need from Rhombus?</summary>
+        <p>Just a Rhombus account. Click "Sign in with Rhombus" in the app, or create an API key with video access in the Rhombus Console under Settings → API Management.</p>
+      </details>
+      <details>
+        <summary>Is my footage or key sent anywhere else?</summary>
+        <p>No. The app talks only to the Rhombus API and your chosen folder. Credentials live in your computer's secure credential store, and video files stay on your drive.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>Built on the Rhombus public API. Not an official Rhombus Systems product.</p>
+    <p style="margin-top:8px"><a href="https://github.com/pulisse/rhombus-footage-backup">Source on GitHub</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
