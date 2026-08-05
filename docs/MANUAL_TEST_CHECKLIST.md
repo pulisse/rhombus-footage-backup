@@ -45,6 +45,22 @@ Items marked ⚠ verify assumptions that could not be tested without a real org.
 - [ ] Cancel mid-run → run stops within a few seconds, status "Backup stopped",
       partially-downloaded temp files are cleaned up (no `.rhombus-tmp` left).
 
+## Progress display
+- [ ] During a run: animated striped bars while downloading, a sweeping bar with
+      "downloading audio…" / "packaging video…" after segments hit 100% (the UI
+      must never sit silent at 100%), spinner + ETA in the header.
+- [ ] Camera picker (wizard AND settings): search filters by camera or location
+      name with highlighted matches; location headers fold/unfold; All/None
+      buttons respect the current search; counts update live.
+
+## Notifications
+- [ ] Add a Slack (or Teams/Google Chat) incoming webhook in Settings →
+      Notifications, Save, then Send Test → message arrives in the channel.
+- [ ] Set "After every backup" → run a backup → summary message arrives with
+      camera count and size; set "Only when something fails" → a clean run
+      sends nothing, a failed camera sends the warning summary.
+- [ ] Email (if used): SMTP password is in the keychain, not config.json.
+
 ## Failure handling
 - [ ] Unplug one camera (or pick an offline one) → other cameras complete;
       History shows exactly which camera failed and a readable reason.

@@ -235,25 +235,110 @@ async function updateFreeSpace(inputEl, statusEl) {
     : `Free space on this drive: ${r.freeHuman}`;
 }
 
+/* Camera picker: search, All/None, foldable location groups, counts. */
+const camPickerState = new Map(); // container id -> {query, folded:Set<location>}
+
 function renderCameraList(container, selectedSet, onChange) {
+  const st = camPickerState.get(container.id) || { query: "", folded: new Set() };
+  camPickerState.set(container.id, st);
+  const rerender = () => renderCameraList(container, selectedSet, onChange);
+  const q = st.query.trim().toLowerCase();
+  const allCams = cameraGroups.flatMap((g) => g.cameras);
+  const matches = (g, c) =>
+    !q || c.name.toLowerCase().includes(q) || g.location.toLowerCase().includes(q);
+  const visible = cameraGroups
+    .map((g) => ({ ...g, cameras: g.cameras.filter((c) => matches(g, c)) }))
+    .filter((g) => g.cameras.length);
+  const visibleIds = visible.flatMap((g) => g.cameras.map((c) => c.uuid));
+
+  container.classList.remove("camera-list");
   container.innerHTML = "";
-  cameraGroups.forEach((g) => {
+
+  // toolbar: search + All/None + count
+  const bar = document.createElement("div");
+  bar.className = "cam-toolbar";
+  const search = document.createElement("input");
+  search.type = "text";
+  search.placeholder = "Search cameras or locations…";
+  search.value = st.query;
+  search.addEventListener("input", () => {
+    st.query = search.value;
+    const pos = search.selectionStart;
+    rerender();
+    const s2 = container.querySelector(".cam-toolbar input");
+    s2.focus(); s2.setSelectionRange(pos, pos);
+  });
+  const btnAll = document.createElement("button");
+  btnAll.className = "btn"; btnAll.type = "button";
+  btnAll.textContent = q ? "All shown" : "All";
+  btnAll.addEventListener("click", () => {
+    visibleIds.forEach((id) => selectedSet.add(id)); rerender(); onChange();
+  });
+  const btnNone = document.createElement("button");
+  btnNone.className = "btn"; btnNone.type = "button";
+  btnNone.textContent = q ? "None shown" : "None";
+  btnNone.addEventListener("click", () => {
+    visibleIds.forEach((id) => selectedSet.delete(id)); rerender(); onChange();
+  });
+  const count = document.createElement("span");
+  count.className = "cam-count";
+  count.textContent = `${[...selectedSet].filter((id) => allCams.some((c) => c.uuid === id)).length} of ${allCams.length} selected`;
+  bar.append(search, btnAll, btnNone, count);
+  container.appendChild(bar);
+
+  const listEl = document.createElement("div");
+  listEl.className = "camera-list";
+  container.appendChild(listEl);
+
+  const highlight = (text) => {
+    if (!q) return document.createTextNode(" " + text + " ");
+    const i = text.toLowerCase().indexOf(q);
+    if (i < 0) return document.createTextNode(" " + text + " ");
+    const frag = document.createDocumentFragment();
+    frag.append(" " + text.slice(0, i));
+    const m = document.createElement("mark");
+    m.textContent = text.slice(i, i + q.length);
+    frag.append(m, text.slice(i + q.length) + " ");
+    return frag;
+  };
+
+  if (!visible.length) {
+    listEl.innerHTML = "<div class='cam-no-results'>No cameras match that search.</div>";
+    return;
+  }
+
+  visible.forEach((g) => {
+    const folded = !q && st.folded.has(g.location); // searching auto-unfolds
     const grp = document.createElement("div");
-    grp.className = "loc-group";
-    const head = document.createElement("label");
+    grp.className = "loc-group" + (folded ? " folded" : "");
+
+    const head = document.createElement("div");
     head.className = "loc-header";
+    const arrow = document.createElement("span");
+    arrow.className = "fold-arrow";
+    arrow.textContent = "▼";
     const all = document.createElement("input");
     all.type = "checkbox";
     const camIds = g.cameras.map((c) => c.uuid);
-    const sync = () => { all.checked = camIds.every((id) => selectedSet.has(id)); };
+    const selCount = camIds.filter((id) => selectedSet.has(id)).length;
+    all.checked = selCount === camIds.length;
+    all.indeterminate = selCount > 0 && selCount < camIds.length;
+    all.addEventListener("click", (e) => e.stopPropagation());
     all.addEventListener("change", () => {
       camIds.forEach((id) => all.checked ? selectedSet.add(id) : selectedSet.delete(id));
-      renderCameraList(container, selectedSet, onChange);
-      onChange();
+      rerender(); onChange();
     });
-    head.appendChild(all);
-    head.appendChild(document.createTextNode(" " + g.location));
+    const locCount = document.createElement("span");
+    locCount.className = "loc-count";
+    locCount.textContent = `${selCount}/${camIds.length} selected`;
+    head.append(arrow, all, highlight(g.location), locCount);
+    head.addEventListener("click", (e) => {
+      if (e.target === all) return;
+      st.folded.has(g.location) ? st.folded.delete(g.location) : st.folded.add(g.location);
+      rerender();
+    });
     grp.appendChild(head);
+
     g.cameras.forEach((c) => {
       const line = document.createElement("label");
       line.className = "cam-line";
@@ -262,13 +347,11 @@ function renderCameraList(container, selectedSet, onChange) {
       cb.checked = selectedSet.has(c.uuid);
       cb.addEventListener("change", () => {
         cb.checked ? selectedSet.add(c.uuid) : selectedSet.delete(c.uuid);
-        sync(); onChange();
+        rerender(); onChange();
       });
       const dot = document.createElement("span");
       dot.className = "status-dot " + (c.online ? "on" : "off");
-      line.appendChild(cb);
-      line.appendChild(dot);
-      line.appendChild(document.createTextNode(" " + c.name + " "));
+      line.append(cb, dot, highlight(c.name));
       if (!c.online) {
         const off = document.createElement("span");
         off.className = "offline-label";
@@ -277,8 +360,7 @@ function renderCameraList(container, selectedSet, onChange) {
       }
       grp.appendChild(line);
     });
-    sync();
-    container.appendChild(grp);
+    listEl.appendChild(grp);
   });
 }
 
@@ -416,18 +498,35 @@ async function pollStatus() {
   $("progress-card").classList.toggle("hidden", !run);
   if (!run) return;
 
-  $("progress-title").textContent = {
+  const title = $("progress-title");
+  title.innerHTML = "";
+  if (running) {
+    const sp = document.createElement("span");
+    sp.className = "spinner";
+    title.appendChild(sp);
+  }
+  title.appendChild(document.createTextNode({
     running: "Backing up…", done: "Backup finished", failed: "Backup failed",
     cancelled: "Backup stopped", pending: "Starting…",
-  }[run.state] || run.state;
+  }[run.state] || run.state));
   $("progress-overall").textContent = run.overallPercent + "%";
-  $("progress-overall-bar").style.width = run.overallPercent + "%";
+  const overallBar = $("progress-overall-bar");
+  overallBar.style.width = run.overallPercent + "%";
+  overallBar.classList.toggle("active", !!running);
   const doneCams = run.cameras.filter((c) => c.status === "done").length;
   const failedCams = run.cameras.filter((c) => c.status === "failed").length;
+  let eta = "";
+  if (running && run.startedAt && run.overallPercent > 2) {
+    const elapsed = Date.now() / 1000 - run.startedAt;
+    const remaining = elapsed * (100 - run.overallPercent) / run.overallPercent;
+    eta = remaining > 90
+      ? ` · about ${Math.round(remaining / 60)} min left`
+      : ` · under 2 min left`;
+  }
   $("progress-sub").textContent =
     `${fmtWhen(run.startEpoch)} → ${fmtWhen(run.startEpoch + run.durationSec)}` +
     ` · ${human(run.bytes)} downloaded · ${doneCams}/${run.cameras.length} cameras done` +
-    (failedCams ? ` · ${failedCams} failed` : "");
+    (failedCams ? ` · ${failedCams} failed` : "") + eta;
 
   const box = $("camera-progress");
   box.innerHTML = "";
@@ -442,17 +541,23 @@ async function pollStatus() {
     st.className = "state " + c.status;
     st.textContent = {
       queued: "waiting…", downloading: `${c.percent}% · ${human(c.bytes)}`,
-      merging: "packaging video…", done: "✓ saved " + human(c.bytes),
+      audio: "downloading audio…", merging: "packaging video…",
+      done: "✓ saved " + human(c.bytes),
       failed: c.error, skipped: "skipped",
     }[c.status] || c.status;
     row.appendChild(nm); row.appendChild(st);
     div.appendChild(row);
-    if (c.status === "downloading" || c.status === "merging") {
+    if (["downloading", "audio", "merging", "queued"].includes(c.status)) {
       const track = document.createElement("div");
       track.className = "progress-track";
       const fill = document.createElement("div");
-      fill.className = "progress-fill";
-      fill.style.width = (c.status === "merging" ? 100 : c.percent) + "%";
+      if (c.status === "downloading") {
+        fill.className = "progress-fill active";
+        fill.style.width = c.percent + "%";
+      } else {
+        // queued (waiting to start) and merging (packaging) both sweep
+        fill.className = "progress-fill indeterminate";
+      }
       track.appendChild(fill);
       div.appendChild(track);
     }
@@ -514,6 +619,16 @@ async function initSettings() {
   renderScheduleRadios($("set-schedule"), c.schedule);
   updateFreeSpace($("set-dest"), $("set-freespace"));
 
+  $("set-notify-mode").value = c.notifyMode || "never";
+  $("set-slack").value = c.slackWebhook || "";
+  $("set-teams").value = c.teamsWebhook || "";
+  $("set-gchat").value = c.gchatWebhook || "";
+  $("set-email-to").value = c.emailTo || "";
+  $("set-smtp-host").value = c.smtpHost || "";
+  $("set-smtp-port").value = c.smtpPort || 587;
+  $("set-smtp-user").value = c.smtpUser || "";
+  $("email-details").open = !!(c.emailTo || c.smtpHost);
+
   const ff = $("ffmpeg-status");
   ff.className = "inline-status " + (STATE.ffmpegOk ? "good" : "bad");
   ff.textContent = STATE.ffmpegOk
@@ -554,6 +669,15 @@ $("set-test-btn").addEventListener("click", async () => {
   out.textContent = r.ok ? `✓ Connected to ${r.orgName}` : r.error;
 });
 
+$("notify-test-btn").addEventListener("click", async () => {
+  const out = $("notify-test-result");
+  out.className = "inline-status";
+  out.textContent = "Sending… (save settings first if you just added a channel)";
+  const r = await api("/api/test-notification", {});
+  out.className = "inline-status " + (r.ok ? "good" : "bad");
+  out.textContent = r.ok ? `✓ Sent to ${r.channels.join(", ")}` : r.error;
+});
+
 $("ffmpeg-install-btn").addEventListener("click", async () => {
   const ff = $("ffmpeg-status");
   ff.className = "inline-status"; ff.textContent = "Installing… this can take a minute.";
@@ -575,14 +699,25 @@ $("set-save-btn").addEventListener("click", async () => {
     threads: +$("set-threads").value,
     useWan: !$("set-lan").checked,
     osScheduleEnabled: $("set-os-sched").checked,
+    notifyMode: $("set-notify-mode").value,
+    slackWebhook: $("set-slack").value.trim(),
+    teamsWebhook: $("set-teams").value.trim(),
+    gchatWebhook: $("set-gchat").value.trim(),
+    emailTo: $("set-email-to").value.trim(),
+    smtpHost: $("set-smtp-host").value.trim(),
+    smtpPort: +$("set-smtp-port").value || 587,
+    smtpUser: $("set-smtp-user").value.trim(),
   };
   const key = $("set-apikey").value.trim();
   if (key) body.apiKey = key;
+  const smtpPass = $("set-smtp-pass").value;
+  if (smtpPass) body.smtpPassword = smtpPass;
   const r = await api("/api/config", body);
   if (!r.ok) { out.textContent = ""; $("set-error").textContent = r.error; return; }
   out.className = "inline-status good";
   out.textContent = "✓ Saved";
   $("set-apikey").value = "";
+  $("set-smtp-pass").value = "";
   STATE = await api("/api/state");
   setTimeout(() => { out.textContent = ""; }, 2500);
 });

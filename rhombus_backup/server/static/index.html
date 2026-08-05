@@ -179,6 +179,51 @@
         <span>days (older backups are deleted automatically)</span>
       </div>
 
+      <h3>Notifications</h3>
+      <div class="row">
+        <label>Send a notification:&nbsp;</label>
+        <select id="set-notify-mode">
+          <option value="never">Never</option>
+          <option value="always">After every backup</option>
+          <option value="failures">Only when something fails</option>
+        </select>
+        <button id="notify-test-btn" class="btn">Send Test</button>
+        <span id="notify-test-result" class="inline-status"></span>
+      </div>
+      <div id="notify-channels">
+        <div class="row">
+          <span class="notify-label">Slack</span>
+          <input type="text" id="set-slack" placeholder="Incoming webhook URL (https://hooks.slack.com/…)">
+        </div>
+        <div class="row">
+          <span class="notify-label">Teams</span>
+          <input type="text" id="set-teams" placeholder="Incoming webhook URL from your Teams channel">
+        </div>
+        <div class="row">
+          <span class="notify-label">Google Chat</span>
+          <input type="text" id="set-gchat" placeholder="Webhook URL from your Google Chat space">
+        </div>
+        <details class="advanced" id="email-details">
+          <summary>Email (needs your mail server details)</summary>
+          <div class="row">
+            <span class="notify-label">Send to</span>
+            <input type="text" id="set-email-to" placeholder="alerts@yourcompany.com">
+          </div>
+          <div class="row">
+            <span class="notify-label">Mail server</span>
+            <input type="text" id="set-smtp-host" placeholder="smtp.yourcompany.com" style="max-width:260px">
+            <span>port</span>
+            <input type="number" id="set-smtp-port" value="587" min="1" max="65535" style="width:90px">
+          </div>
+          <div class="row">
+            <span class="notify-label">Username</span>
+            <input type="text" id="set-smtp-user" placeholder="usually your email address" style="max-width:260px">
+            <span class="notify-label">Password</span>
+            <input type="password" id="set-smtp-pass" placeholder="stored in your keychain" autocomplete="off" style="max-width:200px">
+          </div>
+        </details>
+      </div>
+
       <h3>Network</h3>
       <label class="check-line">
         <input type="checkbox" id="set-lan">

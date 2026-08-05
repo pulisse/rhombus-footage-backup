@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 
 from . import config as config_mod
-from . import history, os_sched, retention, schedule_calc, space
+from . import history, notify, os_sched, retention, schedule_calc, space
 from .api import RhombusClient
 from .config import AppConfig
 from .downloader import BackupRun
@@ -169,6 +169,7 @@ class AppService:
                 }
             )
             history.trim()
+            notify.notify_run_finished(self.cfg, snap)
             try:
                 retention.cleanup(self.cfg.destination, self.cfg.retention_days)
             except Exception as exc:  # noqa: BLE001

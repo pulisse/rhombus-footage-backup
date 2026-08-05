@@ -33,6 +33,15 @@ class AppConfig:
     backup_window_hours: float = 1.0  # how much footage each scheduled run grabs
     os_schedule_enabled: bool = False
     setup_complete: bool = False
+    # notifications
+    notify_mode: str = "never"      # never | always | failures
+    slack_webhook: str = ""
+    teams_webhook: str = ""
+    gchat_webhook: str = ""
+    email_to: str = ""
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""             # SMTP password lives in the OS keyring
 
     def validate(self) -> List[str]:
         """Return a list of human-readable problems (empty list = valid)."""
@@ -47,6 +56,14 @@ class AppConfig:
             problems.append("Unknown schedule choice.")
         if not (0.25 <= self.backup_window_hours <= 24):
             problems.append("Backup window must be between 15 minutes and 24 hours.")
+        if self.notify_mode not in ("never", "always", "failures"):
+            problems.append("Unknown notification choice.")
+        if not (1 <= self.smtp_port <= 65535):
+            problems.append("The mail server port must be between 1 and 65535.")
+        for label, url in (("Slack", self.slack_webhook), ("Teams", self.teams_webhook),
+                           ("Google Chat", self.gchat_webhook)):
+            if url and not url.startswith("https://"):
+                problems.append("The {} webhook address must start with https://".format(label))
         return problems
 
 
@@ -92,3 +109,20 @@ def delete_api_key() -> None:
         keyring.delete_password(KEYRING_SERVICE, KEYRING_USER)
     except Exception:
         pass
+
+
+KEYRING_SMTP_USER = "smtp-password"
+
+
+def get_smtp_password() -> Optional[str]:
+    import keyring
+    try:
+        return keyring.get_password(KEYRING_SERVICE, KEYRING_SMTP_USER)
+    except Exception:
+        return None
+
+
+def set_smtp_password(password: str) -> None:
+    import keyring
+    if password:
+        keyring.set_password(KEYRING_SERVICE, KEYRING_SMTP_USER, password)

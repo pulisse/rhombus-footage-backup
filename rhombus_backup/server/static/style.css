@@ -106,11 +106,29 @@ input[type=text], input[type=password] { flex: 1; min-width: 240px; }
 
 /* camera list */
 .camera-list { border: 1px solid var(--line); border-radius: 10px; max-height: 320px; overflow-y: auto; }
-.loc-group { padding: 4px 0; }
+.cam-toolbar {
+  display: flex; gap: 8px; align-items: center; margin: 8px 0; flex-wrap: wrap;
+}
+.cam-toolbar input[type=text] { flex: 1; min-width: 180px; }
+.cam-toolbar .btn { padding: 7px 12px; font-size: 13px; }
+.cam-count { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.loc-group { padding: 0; }
 .loc-header {
   display: flex; align-items: center; gap: 8px; padding: 8px 14px;
   font-weight: 600; background: color-mix(in srgb, var(--line) 40%, transparent);
+  cursor: pointer; user-select: none;
 }
+.loc-header .fold-arrow {
+  display: inline-block; width: 14px; transition: transform .15s ease;
+  color: var(--muted); font-size: 11px;
+}
+.loc-group.folded .fold-arrow { transform: rotate(-90deg); }
+.loc-group.folded .cam-line { display: none; }
+.loc-header .loc-count {
+  margin-left: auto; font-weight: 400; font-size: 12px; color: var(--muted);
+}
+.cam-no-results { padding: 18px 14px; color: var(--muted); font-size: 13.5px; }
+mark { background: color-mix(in srgb, var(--warn) 35%, transparent); color: inherit; border-radius: 2px; }
 .cam-line { display: flex; align-items: center; gap: 8px; padding: 7px 14px 7px 30px; }
 .cam-line .status-dot { width: 8px; height: 8px; border-radius: 50%; }
 .status-dot.on { background: var(--good); }
@@ -129,6 +147,34 @@ input[type=text], input[type=password] { flex: 1; min-width: 240px; }
   height: 100%; width: 0%; background: var(--accent);
   border-radius: 5px; transition: width .4s ease;
 }
+/* animated candy-stripe while actively downloading */
+.progress-fill.active {
+  background-image: linear-gradient(
+    45deg,
+    rgba(255,255,255,.22) 25%, transparent 25%,
+    transparent 50%, rgba(255,255,255,.22) 50%,
+    rgba(255,255,255,.22) 75%, transparent 75%, transparent
+  );
+  background-size: 26px 26px;
+  animation: stripes 0.9s linear infinite;
+}
+/* indeterminate sweep while waiting / packaging */
+.progress-fill.indeterminate {
+  width: 35% !important;
+  animation: sweep 1.4s ease-in-out infinite;
+}
+@keyframes stripes { to { background-position: 26px 0; } }
+@keyframes sweep {
+  0%   { margin-left: -35%; }
+  100% { margin-left: 100%; }
+}
+.spinner {
+  display: inline-block; width: 14px; height: 14px; margin-right: 8px;
+  border: 2px solid var(--line); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .8s linear infinite;
+  vertical-align: -2px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 .cam-progress { margin: 12px 0; }
 .cam-progress .row { margin: 2px 0; font-size: 13.5px; }
 .cam-progress .name { font-weight: 600; }
@@ -185,3 +231,5 @@ details.advanced summary { cursor: pointer; color: var(--muted); font-weight: 60
 .fb-entry:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .fb-empty { padding: 18px 14px; color: var(--muted); font-size: 13.5px; }
 #fb-places { max-width: 220px; }
+
+.notify-label { min-width: 92px; font-size: 13.5px; color: var(--muted); }

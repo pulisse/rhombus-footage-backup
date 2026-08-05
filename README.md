@@ -50,6 +50,10 @@ Either way, access is stored in your computer's secure credential store
   your computer run backups even when the app isn't open.
 - **Old footage cleans itself up** — files older than your retention setting
   (default 30 days) are deleted automatically so the drive never silently fills.
+- **Get notified when backups finish** — in Settings → Notifications, paste an
+  incoming-webhook URL from Slack, Microsoft Teams, or Google Chat (or add your
+  mail server details for email). Choose "After every backup" or "Only when
+  something fails", then click **Send Test** to confirm it works.
 
 ### Where do my videos go?
 

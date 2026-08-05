@@ -9,7 +9,7 @@ from flask import Flask, jsonify, request, send_from_directory
 
 from .. import __version__, APP_DISPLAY_NAME
 from ..core import config as config_mod
-from ..core import fs_browse, history, os_sched, space
+from ..core import fs_browse, history, notify, os_sched, space
 from ..core.api import RhombusClient
 from ..core.config import SCHEDULE_CHOICES
 from ..core.errors import FriendlyError, friendly_exception
@@ -68,6 +68,14 @@ def create_app(service: AppService) -> Flask:
                 "useWan": cfg.use_wan,
                 "threads": cfg.threads,
                 "osScheduleEnabled": cfg.os_schedule_enabled,
+                "notifyMode": cfg.notify_mode,
+                "slackWebhook": cfg.slack_webhook,
+                "teamsWebhook": cfg.teams_webhook,
+                "gchatWebhook": cfg.gchat_webhook,
+                "emailTo": cfg.email_to,
+                "smtpHost": cfg.smtp_host,
+                "smtpPort": cfg.smtp_port,
+                "smtpUser": cfg.smtp_user,
             },
             "osScheduleRegistered": os_sched.is_registered(),
             "signinAvailable": service.signin_available(),
@@ -159,14 +167,21 @@ def create_app(service: AppService) -> Flask:
     def save_config():
         body = request.json or {}
         api_key = body.pop("apiKey", None)
+        smtp_password = body.pop("smtpPassword", None)
         mapping = {
             "destination": "destination", "cameraUuids": "camera_uuids",
             "schedule": "schedule", "retentionDays": "retention_days",
             "useWan": "use_wan", "threads": "threads",
             "osScheduleEnabled": "os_schedule_enabled",
             "setupComplete": "setup_complete",
+            "notifyMode": "notify_mode", "slackWebhook": "slack_webhook",
+            "teamsWebhook": "teams_webhook", "gchatWebhook": "gchat_webhook",
+            "emailTo": "email_to", "smtpHost": "smtp_host",
+            "smtpPort": "smtp_port", "smtpUser": "smtp_user",
         }
         updates = {mapping[k]: v for k, v in body.items() if k in mapping}
+        if smtp_password:
+            config_mod.set_smtp_password(smtp_password)
         try:
             problems = service.save_config(updates, api_key=api_key)
         except Exception as exc:  # noqa: BLE001
@@ -208,6 +223,24 @@ def create_app(service: AppService) -> Flask:
     @app.route("/api/history")
     def get_history():
         return jsonify({"ok": True, "entries": history.read(limit=50)})
+
+    @app.route("/api/test-notification", methods=["POST"])
+    def test_notification():
+        channels = notify.channels_configured(service.cfg)
+        if not channels:
+            return jsonify({
+                "ok": False,
+                "error": "No notification channel is set up yet - add a webhook "
+                         "address or email details first, then Save Settings.",
+            }), 400
+        errors = notify.send_all(
+            service.cfg,
+            "Rhombus Backup Buddy - test notification",
+            "👋 This is a test from Rhombus Backup Buddy. Notifications are working!",
+        )
+        if errors:
+            return jsonify({"ok": False, "error": " ".join(errors)}), 400
+        return jsonify({"ok": True, "channels": channels})
 
     @app.route("/api/install-ffmpeg", methods=["POST"])
     def install_ffmpeg():

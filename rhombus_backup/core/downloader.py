@@ -47,7 +47,7 @@ class CameraJob:
     def __init__(self, cam: dict):
         self.uuid = cam["uuid"]
         self.name = cam["name"]
-        self.status = "queued"      # queued | downloading | merging | done | failed | skipped
+        self.status = "queued"      # queued | downloading | audio | merging | done | failed | skipped
         self.done_segments = 0
         self.total_segments = 0
         self.bytes = 0
@@ -205,6 +205,8 @@ class BackupRun:
             audio_ok = False
             gw = self.audio_map.get(job.uuid)
             if gw:
+                job.status = "audio"   # UI: "downloading audio..." so 100% never looks stuck
+                self.on_change()
                 try:
                     a_template = self.client.get_audio_mpd_template(gw, self.cfg.use_wan)
                     self._download_stream(
