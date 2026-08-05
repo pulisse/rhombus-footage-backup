@@ -159,9 +159,15 @@ class RhombusClient:
         }
 
 
-def media_session() -> requests.Session:
-    """Session for downloading segments. verify=False because LAN cameras use
+def media_session(api_key: str) -> requests.Session:
+    """Session for downloading segments.
+
+    Matches the original script: the API key rides as headers alongside the
+    federated-session cookie - the WAN media edge (dash.rhombussystems.com)
+    returns 403 without them, while LAN cameras accept the cookie alone.
+    The key is never part of the URL. verify=False because LAN cameras use
     self-signed certs (same behavior as the original script)."""
     sess = requests.Session()
     sess.verify = False
+    sess.headers.update({"x-auth-scheme": "api-token", "x-auth-apikey": api_key})
     return sess

@@ -35,6 +35,16 @@ def test_auth_headers_match_original_script():
     assert c._sess.headers["x-auth-apikey"] == "sekret"
 
 
+def test_media_session_carries_auth_headers():
+    # The WAN media edge 403s without the API key headers (found in the wild);
+    # the original script always sent them on the media session too.
+    from rhombus_backup.core.api import media_session
+    s = media_session("sekret")
+    assert s.headers["x-auth-scheme"] == "api-token"
+    assert s.headers["x-auth-apikey"] == "sekret"
+    assert s.verify is False
+
+
 def test_get_cameras_marks_offline():
     c = client_with([fake_response(200, CAMS)])
     cams = c.get_cameras(include_offline=True)

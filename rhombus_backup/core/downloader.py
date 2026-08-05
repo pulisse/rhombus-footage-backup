@@ -80,6 +80,7 @@ class BackupRun:
     ):
         self.cfg = cfg
         self.client = RhombusClient(api_key)
+        self._api_key = api_key
         self.cameras = cameras
         self.start_epoch = int(start_epoch)
         self.duration_sec = int(duration_sec)
@@ -194,7 +195,7 @@ class BackupRun:
         try:
             token = self.client.generate_session_token(3600)
             media_headers = {"Cookie": "RSESSIONID=RFT:" + token}
-            sess = media_session()
+            sess = media_session(self._api_key)
 
             template = self.client.get_camera_mpd_template(job.uuid, self.cfg.use_wan)
             self._download_stream(
