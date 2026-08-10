@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rhombus Backup Buddy — Back up your camera footage to your own drive</title>
 <meta name="description" content="Rhombus Backup Buddy downloads footage from your Rhombus cameras and saves it as normal video files on any drive you choose. Runs on a schedule, cleans up after itself, no technical skills needed.">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   :root {
     --bg: #ffffff;
@@ -76,7 +78,7 @@
     display: inline-flex; align-items: center; gap: 10px;
     text-decoration: none;
   }
-  .logo svg { width: 34px; height: 34px; display: block; }
+  .logo img { width: 40px; height: 40px; display: block; }
   .logo .wordmark {
     font-size: 24px; font-weight: 700; letter-spacing: -0.01em;
     color: var(--logo-text); line-height: 1;
@@ -89,7 +91,12 @@
   .nav-links a:hover { color: var(--accent); }
 
   /* Hero */
-  header { padding: 72px 0 56px; text-align: center; }
+  header { padding: 56px 0 56px; text-align: center; }
+  .hero-logo {
+    width: clamp(180px, 28vw, 260px); height: auto;
+    display: block; margin: 0 auto 24px;
+    filter: drop-shadow(0 8px 24px rgba(27, 101, 241, 0.25));
+  }
   .badge {
     display: inline-block;
     font-size: 13px;
@@ -188,23 +195,12 @@
 </head>
 <body>
 
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <linearGradient id="rhombus-grad" x1="0" y1="1" x2="1" y2="0">
-      <stop offset="0" stop-color="#1b65f1"/>
-      <stop offset="1" stop-color="#35c3f5"/>
-    </linearGradient>
-  </defs>
-</svg>
-
 <div class="disclaimer"><b>Heads up:</b> this is not an officially released Rhombus product and is not supported by Rhombus Support. Built on the Rhombus public API.</div>
 
 <nav>
   <div class="wrap nav-inner">
     <a class="logo" href="#" aria-label="Rhombus Backup Buddy home">
-      <svg viewBox="0 0 120 120" role="img" aria-hidden="true">
-        <rect x="26" y="26" width="68" height="68" rx="16" transform="rotate(45 60 60)" fill="url(#rhombus-grad)"/>
-      </svg>
+      <img src="logo-mark.png" alt="" width="40" height="40">
       <span class="wordmark">rhombus</span>
     </a>
     <div class="nav-links">
@@ -216,6 +212,7 @@
 
 <header>
   <div class="wrap">
+    <img class="hero-logo" src="logo.png" alt="Rhombus Backup Buddy mascot logo">
     <span class="badge">Free · Mac &amp; Windows</span>
     <h1>Rhombus Backup&nbsp;Buddy</h1>
     <p class="tagline">Back up your Rhombus camera footage to your own drive — an external disk, a NAS, or this computer. Automatic schedules, plain MP4 files, no technical skills needed.</p>
@@ -338,9 +335,7 @@ Backups/<br>
 
 <footer>
   <div class="wrap">
-    <svg viewBox="0 0 120 120" style="width:26px;height:26px;margin-bottom:10px" aria-hidden="true">
-      <rect x="26" y="26" width="68" height="68" rx="16" transform="rotate(45 60 60)" fill="url(#rhombus-grad)"/>
-    </svg>
+    <img src="logo-mark.png" alt="" style="width:32px;height:32px;margin-bottom:10px">
     <p>Built on the Rhombus public API. Not an official Rhombus Systems product.</p>
     <p style="margin-top:8px"><a href="https://github.com/pulisse/rhombus-footage-backup">Source on GitHub</a></p>
   </div>

@@ -22,6 +22,10 @@ ffmpeg_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
 bundled_ffmpeg = project_root / "build" / "bin" / ffmpeg_name
 binaries = [(str(bundled_ffmpeg), "bin")] if bundled_ffmpeg.exists() else []
 
+# App icon (Backup Buddy mascot) — .ico for Windows, .icns for macOS.
+icon_file = project_root / "build" / ("icon.ico" if os.name == "nt" else "icon.icns")
+app_icon = str(icon_file) if icon_file.exists() else None
+
 hiddenimports = [
     "keyring.backends.macOS",
     "keyring.backends.Windows",
@@ -46,7 +50,7 @@ exe = EXE(
     a.datas,
     name="RhombusBackupBuddy",
     console=False,          # no scary terminal window for end users
-    icon=None,
+    icon=app_icon,
     upx=False,
 )
 
@@ -55,6 +59,7 @@ if sys.platform == "darwin":
     app = BUNDLE(
         exe,
         name="Rhombus Backup Buddy.app",
+        icon=app_icon,
         bundle_identifier="com.rhombus.backupbuddy",
         info_plist={"NSHighResolutionCapable": True},
     )
