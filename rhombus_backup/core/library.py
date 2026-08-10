@@ -101,3 +101,30 @@ def resolve_media(destination: str, rel: str) -> Path:
             "retention or the drive isn't connected."
         )
     return candidate
+
+
+def delete_media(destination: str, rel: str) -> None:
+    """Delete a backed-up clip (same safety rules as resolve_media).
+
+    Manifests are left untouched: scan() already skips clips whose file is
+    gone, so the clip simply disappears from the Library. Empty camera
+    folders left behind are pruned, but day folders are kept because they
+    still hold the run manifests.
+    """
+    path = resolve_media(destination, rel)
+    try:
+        path.unlink()
+    except OSError as exc:
+        raise FriendlyError(
+            "Couldn't delete that video - check that the drive is connected "
+            "and the file isn't open in another app.",
+            technical=str(exc),
+        ) from exc
+    _log.info("Deleted clip %s", path)
+    root = Path(destination).resolve()
+    cam_dir = path.parent
+    if cam_dir != root and cam_dir.is_dir() and not any(cam_dir.iterdir()):
+        try:
+            cam_dir.rmdir()
+        except OSError:
+            pass

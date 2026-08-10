@@ -111,3 +111,35 @@ def test_scan_defaults_missing_events(tmp_path):
     _make_backup(tmp_path)  # manifest written without events key
     result = library.scan(str(tmp_path))
     assert result["days"][0]["clips"][0]["events"] == []
+
+
+def test_delete_media_removes_clip_and_empty_camera_dir(tmp_path):
+    clip = _make_backup(tmp_path)
+    rel = "2026-08-05/Front Door/FrontDoor_2026-08-05_14-00.mp4"
+    library.delete_media(str(tmp_path), rel)
+    assert not clip.exists()
+    assert not clip.parent.exists()  # empty camera dir pruned
+    assert (tmp_path / "2026-08-05").is_dir()  # day dir kept (manifests live there)
+    assert library.scan(str(tmp_path))["days"] == []
+
+
+def test_delete_media_keeps_camera_dir_with_other_clips(tmp_path):
+    clip = _make_backup(tmp_path)
+    sibling = clip.parent / "FrontDoor_2026-08-05_15-00.mp4"
+    sibling.write_bytes(b"\x00" * 64)
+    library.delete_media(
+        str(tmp_path), "2026-08-05/Front Door/FrontDoor_2026-08-05_14-00.mp4")
+    assert not clip.exists()
+    assert sibling.exists() and clip.parent.is_dir()
+
+
+@pytest.mark.parametrize("rel", [
+    "", "../etc/passwd", "/etc/passwd",
+    "2026-08-05/../../outside.mp4", "2026-08-05/Front Door/missing.mp4",
+])
+def test_delete_media_rejects(tmp_path, rel):
+    _make_backup(tmp_path)
+    (tmp_path.parent / "outside.mp4").write_bytes(b"x")
+    with pytest.raises(FriendlyError):
+        library.delete_media(str(tmp_path), rel)
+    assert (tmp_path.parent / "outside.mp4").exists()

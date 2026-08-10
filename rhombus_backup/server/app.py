@@ -243,6 +243,15 @@ def create_app(service: AppService) -> Flask:
         # conditional=True enables HTTP Range requests so <video> can seek.
         return send_file(path, conditional=True)
 
+    @app.route("/api/library/delete", methods=["POST"])
+    def library_delete():
+        rel = (request.get_json(silent=True) or {}).get("path", "")
+        try:
+            library.delete_media(service.cfg.destination or "", rel)
+        except FriendlyError as exc:
+            return fail(exc, 404)
+        return jsonify({"ok": True})
+
     @app.route("/api/test-notification", methods=["POST"])
     def test_notification():
         channels = notify.channels_configured(service.cfg)

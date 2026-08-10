@@ -266,8 +266,20 @@ details.advanced summary { cursor: pointer; color: var(--muted); font-weight: 60
   display: flex; justify-content: space-between;
   font-size: 11px; color: var(--muted); margin-top: 4px;
 }
-.lib-entry { cursor: pointer; }
+.lib-entry { cursor: pointer; display: flex; align-items: center; gap: 6px; }
 .lib-entry:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.lib-del {
+  margin-left: auto; border: none; background: none; cursor: pointer;
+  font-size: 13px; line-height: 1; padding: 3px 8px; border-radius: 6px;
+  color: var(--muted); opacity: 0; transition: opacity 0.12s;
+}
+.lib-entry:hover .lib-del { opacity: 1; }
+.lib-del:hover { background: color-mix(in srgb, var(--bad) 12%, transparent); }
+.lib-del.confirm {
+  opacity: 1; color: #fff; background: var(--bad);
+  font-size: 12.5px; font-weight: 600;
+}
+.lib-del:disabled { opacity: 0.5; cursor: default; }
 .lib-play { color: var(--accent); font-weight: 700; margin-right: 4px; }
 
 /* library: event overlay, filters, zoom */

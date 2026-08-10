@@ -679,6 +679,35 @@ function renderLibDay() {
       + ` <span class="inline-status">· ${human(c.bytes)}`
       + (nEvents ? ` · ${nEvents} event${nEvents === 1 ? "" : "s"}` : "") + `</span>`;
     div.addEventListener("click", () => loadClip(c, 0, true));
+
+    // delete button: first click asks, second click (within 4s) deletes
+    const del = document.createElement("button");
+    del.className = "lib-del";
+    del.textContent = "🗑";
+    del.title = "Delete this video from the backup folder";
+    del.addEventListener("click", async (ev) => {
+      ev.stopPropagation();
+      if (!del.classList.contains("confirm")) {
+        del.classList.add("confirm");
+        del.textContent = "Delete this video?";
+        setTimeout(() => {
+          del.classList.remove("confirm");
+          del.textContent = "🗑";
+        }, 4000);
+        return;
+      }
+      del.disabled = true;
+      const r = await api("/api/library/delete", { path: c.file });
+      if (!r.ok) {
+        del.disabled = false;
+        del.classList.remove("confirm");
+        del.textContent = "🗑";
+        $("lib-clip-label").textContent = r.error || "Couldn't delete that video.";
+        return;
+      }
+      await initLibrary(); // re-scan; the clip (and its day, if now empty) disappears
+    });
+    div.appendChild(del);
     list.appendChild(div);
   });
 
