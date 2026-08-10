@@ -15,6 +15,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Write OAuth client config
+        run: printf '%s' "$OAUTH_CLIENT_JSON" > oauth_client.json
+        env:
+          OAUTH_CLIENT_JSON: ${{ secrets.OAUTH_CLIENT_JSON }}
       - name: Build app
         run: ./build/build.sh
       - name: Zip .app bundle
@@ -31,6 +35,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Write OAuth client config
+        run: printf '%s' "$OAUTH_CLIENT_JSON" > oauth_client.json
+        env:
+          OAUTH_CLIENT_JSON: ${{ secrets.OAUTH_CLIENT_JSON }}
+        shell: bash
       - name: Build app
         run: build\build.bat
         shell: cmd
