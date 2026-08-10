@@ -78,7 +78,7 @@
     display: inline-flex; align-items: center; gap: 10px;
     text-decoration: none;
   }
-  .logo img { width: 40px; height: 40px; display: block; }
+  .logo svg { width: 34px; height: 34px; display: block; }
   .logo .wordmark {
     font-size: 24px; font-weight: 700; letter-spacing: -0.01em;
     color: var(--logo-text); line-height: 1;
@@ -200,7 +200,15 @@
 <nav>
   <div class="wrap nav-inner">
     <a class="logo" href="#" aria-label="Rhombus Backup Buddy home">
-      <img src="logo-mark.png" alt="" width="40" height="40">
+      <svg viewBox="0 0 120 120" role="img" aria-hidden="true">
+        <defs>
+          <linearGradient id="rhombus-grad" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0" stop-color="#1b65f1"/>
+            <stop offset="1" stop-color="#35c3f5"/>
+          </linearGradient>
+        </defs>
+        <rect x="26" y="26" width="68" height="68" rx="16" transform="rotate(45 60 60)" fill="url(#rhombus-grad)"/>
+      </svg>
       <span class="wordmark">rhombus</span>
     </a>
     <div class="nav-links">
