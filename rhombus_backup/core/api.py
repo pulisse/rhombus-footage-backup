@@ -64,6 +64,31 @@ class RhombusClient:
                 _log.debug("org name via %s failed: %s", path, exc.technical)
         return None
 
+    # -- events ----------------------------------------------------------------
+    def get_footage_seekpoints(self, camera_uuid: str, start_epoch: int,
+                               duration_sec: int) -> List[dict]:
+        """Activity events (human/vehicle/motion/sound) for a footage window.
+
+        Returns [{"ts": epochSeconds, "a": "MOTION_HUMAN"}, ...] sorted by time.
+        The API takes seconds but reports seekpoint timestamps in milliseconds.
+        """
+        data = self._post("/api/camera/getFootageSeekpointsV2", {
+            "cameraUuid": camera_uuid,
+            "startTime": int(start_epoch),
+            "duration": int(duration_sec),
+            "includeAnyMotion": True,
+        })
+        events = []
+        for sp in data.get("footageSeekPoints") or []:
+            ts = sp.get("ts")
+            if not isinstance(ts, (int, float)):
+                continue
+            if ts > 1e11:  # milliseconds
+                ts = ts / 1000.0
+            events.append({"ts": int(ts), "a": sp.get("a") or "UNKNOWN"})
+        events.sort(key=lambda e: e["ts"])
+        return events
+
     # -- devices -------------------------------------------------------------
     def get_cameras(self, include_offline: bool = True) -> List[dict]:
         """[{uuid, name, locationUuid, online}] for every camera in the org."""

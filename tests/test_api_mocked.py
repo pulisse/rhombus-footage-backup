@@ -95,3 +95,22 @@ def test_audio_gateway_map():
     payload = {"audioGatewayStates": [{"uuid": "g1", "associatedCameras": ["c1"]}]}
     c = client_with([fake_response(200, payload)])
     assert c.get_audio_gateway_map() == {"c1": "g1"}
+
+
+def test_get_footage_seekpoints_normalizes_ms(monkeypatch):
+    from rhombus_backup.core.api import RhombusClient
+    client = RhombusClient("k" * 40)
+    monkeypatch.setattr(client, "_post", lambda path, body=None: {
+        "footageSeekPoints": [
+            {"ts": 1754401000123, "a": "MOTION_HUMAN"},   # milliseconds
+            {"ts": 1754402000, "a": "MOTION_CAR"},        # already seconds
+            {"a": "NO_TS_DROPPED"},
+            {"ts": 1754400000500, "a": None},             # null activity
+        ],
+    })
+    events = client.get_footage_seekpoints("c" * 22, 1754400000, 3600)
+    assert events == [
+        {"ts": 1754400000, "a": "UNKNOWN"},
+        {"ts": 1754401000, "a": "MOTION_HUMAN"},
+        {"ts": 1754402000, "a": "MOTION_CAR"},
+    ]

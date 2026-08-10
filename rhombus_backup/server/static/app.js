@@ -429,6 +429,10 @@ $("wiz-next").addEventListener("click", async () => {
 $("range-preset").addEventListener("change", () => {
   const custom = $("range-preset").value === "custom";
   $("custom-range").classList.toggle("hidden", !custom);
+  if (custom) {
+    $("tz-note").textContent = "times are in this computer's time zone ("
+      + Intl.DateTimeFormat().resolvedOptions().timeZone + ")";
+  }
   if (custom && !$("range-start").value) {
     const now = new Date(), ago = new Date(now - 3600e3);
     const iso = (d) => new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -587,10 +591,23 @@ function renderCameraProgress(run) {
 }
 
 /* ================= LIBRARY ================= */
-/* Browse backed-up footage: pick camera + day, click the 24h timeline to play
+/* Browse backed-up footage: pick camera + day, click the timeline to play
    that moment. Clip = one backed-up file; the timeline shows where footage
-   exists (coverage) and a playhead that follows the video. */
-const LIB = { days: [], cameras: [], camera: null, date: null, clip: null, midnight: 0 };
+   exists (coverage), activity events saved with the backup, and a playhead.
+   view = the visible window [t0, t1] within the day (zoomable). */
+const LIB = { days: [], cameras: [], camera: null, date: null, clip: null,
+              midnight: 0, view: null, filters: null };
+
+/* Activity enums -> display groups (order matters: first match wins). */
+const EVENT_GROUPS = [
+  { key: "human",   label: "People",   match: (a) => /HUMAN|FACE|POSE|LOITER|REID/.test(a) && !/CAR/.test(a) },
+  { key: "vehicle", label: "Vehicles", match: (a) => /CAR|VEHICLE|LICENSEPLATE/.test(a) },
+  { key: "sound",   label: "Sound",    match: (a) => /SOUND|AUDIO/.test(a) },
+  { key: "motion",  label: "Motion",   match: (a) => /MOTION/.test(a) },
+  { key: "other",   label: "Other",    match: () => true },
+];
+const eventGroup = (a) => EVENT_GROUPS.find((g) => g.match(a || "")).key;
+const prettyActivity = (a) => (a || "event").toLowerCase().replace(/_/g, " ");
 
 async function initLibrary() {
   const r = await api("/api/library");
@@ -642,30 +659,11 @@ function libClips() {
 function renderLibDay() {
   const clips = libClips();
   LIB.midnight = LIB.date ? new Date(LIB.date + "T00:00").getTime() / 1000 : 0;
-  const rail = $("lib-rail");
-  rail.innerHTML = "";
+  LIB.view = { t0: LIB.midnight, t1: LIB.midnight + 86400 };
+  if (!LIB.filters) LIB.filters = new Set(EVENT_GROUPS.map((g) => g.key));
 
-  // hour ticks
-  for (let h = 1; h < 24; h++) {
-    const t = document.createElement("span");
-    t.className = "lib-tick" + (h % 4 === 0 ? " major" : "");
-    t.style.left = (100 * h / 24) + "%";
-    rail.appendChild(t);
-  }
-  // footage coverage
-  clips.forEach((c) => {
-    const left = Math.max(0, 100 * (c.startEpoch - LIB.midnight) / 86400);
-    const width = Math.min(100 - left, 100 * c.durationSec / 86400);
-    const seg = document.createElement("div");
-    seg.className = "lib-cov";
-    seg.style.left = left + "%";
-    seg.style.width = Math.max(width, 0.4) + "%";
-    rail.appendChild(seg);
-  });
-  const ph = document.createElement("div");
-  ph.className = "lib-playhead hidden";
-  ph.id = "lib-playhead";
-  rail.appendChild(ph);
+  renderLibFilters();
+  renderLibTimeline();
 
   // clip list
   const list = $("lib-clip-list");
@@ -676,8 +674,10 @@ function renderLibDay() {
     const from = new Date(c.startEpoch * 1000);
     const to = new Date((c.startEpoch + c.durationSec) * 1000);
     const fmt = (d) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const nEvents = (c.events || []).length;
     div.innerHTML = `<span class="lib-play">▶</span> ${fmt(from)} – ${fmt(to)}`
-      + ` <span class="inline-status">· ${human(c.bytes)}</span>`;
+      + ` <span class="inline-status">· ${human(c.bytes)}`
+      + (nEvents ? ` · ${nEvents} event${nEvents === 1 ? "" : "s"}` : "") + `</span>`;
     div.addEventListener("click", () => loadClip(c, 0, true));
     list.appendChild(div);
   });
@@ -692,6 +692,150 @@ function renderLibDay() {
     : "No footage from this camera on this day.";
   $("lib-clip-size").textContent = "";
   $("lib-video-error").classList.add("hidden");
+}
+
+/* Event-type filter chips (only shown for groups present on this day). */
+function renderLibFilters() {
+  const box = $("lib-filters");
+  box.innerHTML = "";
+  const present = new Set();
+  libClips().forEach((c) => (c.events || []).forEach((e) => present.add(eventGroup(e.a))));
+  EVENT_GROUPS.forEach((g) => {
+    if (!present.has(g.key)) return;
+    const chip = document.createElement("span");
+    chip.className = "lib-chip " + g.key + (LIB.filters.has(g.key) ? " on" : "");
+    chip.textContent = g.label;
+    chip.addEventListener("click", () => {
+      LIB.filters.has(g.key) ? LIB.filters.delete(g.key) : LIB.filters.add(g.key);
+      chip.classList.toggle("on");
+      renderLibTimeline();
+    });
+    box.appendChild(chip);
+  });
+}
+
+/* Rebuild the rail + ticks for the current view window (does NOT touch the
+   player, so zooming/filtering never interrupts playback). */
+function renderLibTimeline() {
+  const { t0, t1 } = LIB.view;
+  const span = t1 - t0;
+  const rail = $("lib-rail");
+  rail.innerHTML = "";
+  const pos = (t) => 100 * (t - t0) / span;
+
+  // ticks: pick a step that yields <= 8 labels
+  const steps = [300, 900, 1800, 3600, 7200, 14400, 21600];
+  const step = steps.find((s) => span / s <= 8) || 14400;
+  const ticksEl = $("lib-ticks");
+  ticksEl.innerHTML = "";
+  const first = Math.ceil(t0 / step) * step;
+  for (let t = first; t <= t1; t += step) {
+    const mark = document.createElement("span");
+    mark.className = "lib-tick major";
+    mark.style.left = pos(t) + "%";
+    rail.appendChild(mark);
+    const lbl = document.createElement("span");
+    lbl.className = "lib-tick-lbl";
+    lbl.style.left = pos(t) + "%";
+    lbl.textContent = new Date(t * 1000).toLocaleTimeString([], span > 7200
+      ? { hour: "numeric" } : { hour: "numeric", minute: "2-digit" });
+    ticksEl.appendChild(lbl);
+  }
+
+  const clips = libClips();
+  // footage coverage
+  clips.forEach((c) => {
+    const a = Math.max(t0, c.startEpoch), b = Math.min(t1, c.startEpoch + c.durationSec);
+    if (b <= a) return;
+    const seg = document.createElement("div");
+    seg.className = "lib-cov";
+    seg.style.left = pos(a) + "%";
+    seg.style.width = Math.max(100 * (b - a) / span, 0.4) + "%";
+    rail.appendChild(seg);
+  });
+
+  // activity events (from backup-time metadata)
+  clips.forEach((c) => (c.events || []).forEach((e) => {
+    if (e.ts < t0 || e.ts > t1) return;
+    const g = eventGroup(e.a);
+    if (!LIB.filters.has(g)) return;
+    const dash = document.createElement("span");
+    dash.className = "lib-ev " + g;
+    dash.style.left = pos(e.ts) + "%";
+    dash.title = new Date(e.ts * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })
+      + " · " + prettyActivity(e.a);
+    dash.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      loadClip(c, Math.max(0, e.ts - c.startEpoch), true);
+    });
+    rail.appendChild(dash);
+  }));
+
+  const ph = document.createElement("div");
+  ph.className = "lib-playhead hidden";
+  ph.id = "lib-playhead";
+  rail.appendChild(ph);
+  updatePlayhead();
+}
+
+function updatePlayhead() {
+  const ph = $("lib-playhead");
+  const video = $("lib-video");
+  if (!ph) return;
+  if (!LIB.clip) { ph.classList.add("hidden"); return; }
+  const t = LIB.clip.startEpoch + video.currentTime;
+  const { t0, t1 } = LIB.view;
+  if (t < t0 || t > t1) { ph.classList.add("hidden"); return; }
+  ph.classList.remove("hidden");
+  ph.style.left = (100 * (t - t0) / (t1 - t0)) + "%";
+}
+
+/* -- zoom ------------------------------------------------------------------ */
+function libZoom(factor) {
+  const { t0, t1 } = LIB.view;
+  const video = $("lib-video");
+  // center on the playhead when playing, else on the window center
+  let center = (t0 + t1) / 2;
+  if (LIB.clip && video.currentTime > 0) {
+    const t = LIB.clip.startEpoch + video.currentTime;
+    if (t >= t0 && t <= t1) center = t;
+  }
+  const half = Math.max(450, Math.min(43200, (t1 - t0) * factor / 2)); // 15 min .. 24 h
+  let n0 = center - half, n1 = center + half;
+  const midnight = LIB.midnight, end = midnight + 86400;
+  if (n0 < midnight) { n1 += midnight - n0; n0 = midnight; }
+  if (n1 > end) { n0 -= n1 - end; n1 = end; }
+  LIB.view = { t0: Math.max(midnight, n0), t1: Math.min(end, n1) };
+  renderLibTimeline();
+}
+$("lib-zoom-in").addEventListener("click", () => libZoom(0.5));
+$("lib-zoom-out").addEventListener("click", () => libZoom(2));
+$("lib-zoom-reset").addEventListener("click", () => {
+  LIB.view = { t0: LIB.midnight, t1: LIB.midnight + 86400 };
+  renderLibTimeline();
+});
+
+/* Deep link from History / Recent backups: open the Library at that run. */
+async function openLibraryAt(entry) {
+  showView("library");
+  await initLibrary();          // make sure data is loaded before we retarget
+  const d = new Date(entry.startEpoch * 1000);
+  const date = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0")
+    + "-" + String(d.getDate()).padStart(2, "0");
+  const done = (entry.cameras || []).find((c) => c.status === "done");
+  if (done && LIB.cameras.includes(done.name)) LIB.camera = done.name;
+  $("lib-camera").value = LIB.camera;
+  LIB.date = date;
+  renderLibDates();
+  if (LIB.date !== date) {
+    $("lib-clip-label").textContent = "No footage from that backup is on this drive anymore.";
+    return;
+  }
+  const clips = libClips();
+  const clip = clips.find((c) => entry.startEpoch >= c.startEpoch
+      && entry.startEpoch < c.startEpoch + c.durationSec)
+    || clips.find((c) => c.startEpoch >= entry.startEpoch);
+  if (clip) loadClip(clip, Math.max(0, entry.startEpoch - clip.startEpoch), true);
 }
 
 function loadClip(clip, offsetSec, autoplay) {
@@ -715,7 +859,7 @@ function loadClip(clip, offsetSec, autoplay) {
 $("lib-rail").addEventListener("click", (e) => {
   const rect = $("lib-rail").getBoundingClientRect();
   const frac = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-  const t = LIB.midnight + frac * 86400;
+  const t = LIB.view.t0 + frac * (LIB.view.t1 - LIB.view.t0);
   const clips = libClips();
   let clip = clips.find((c) => t >= c.startEpoch && t < c.startEpoch + c.durationSec);
   let offset = clip ? t - clip.startEpoch : 0;
@@ -727,13 +871,7 @@ $("lib-rail").addEventListener("click", (e) => {
   if (clip) loadClip(clip, offset, true);
 });
 
-$("lib-video").addEventListener("timeupdate", () => {
-  const ph = $("lib-playhead");
-  if (!ph || !LIB.clip) return;
-  const t = LIB.clip.startEpoch + $("lib-video").currentTime;
-  ph.classList.remove("hidden");
-  ph.style.left = Math.min(100, Math.max(0, 100 * (t - LIB.midnight) / 86400)) + "%";
-});
+$("lib-video").addEventListener("timeupdate", updatePlayhead);
 
 $("lib-video").addEventListener("error", () => {
   if (!LIB.clip) return;
@@ -779,6 +917,16 @@ async function loadHistory(elId, compact) {
     if (e.bytes) size.textContent = human(e.bytes);
     head.appendChild(when); head.appendChild(status); head.appendChild(size);
     div.appendChild(head);
+    // click a successful run to watch it in the Library
+    if (e.startEpoch && (e.ok || 0) > 0) {
+      div.classList.add("clickable");
+      div.title = "View this backup's footage in the Library";
+      const view = document.createElement("span");
+      view.className = "lib-play";
+      view.textContent = "▶ Watch";
+      head.appendChild(view);
+      div.addEventListener("click", () => openLibraryAt(e));
+    }
     (e.cameras || []).filter((c) => c.status === "failed").forEach((c) => {
       const d = document.createElement("div");
       d.className = "detail";

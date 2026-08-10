@@ -116,6 +116,7 @@
         <span id="custom-range" class="hidden">
           from <input type="datetime-local" id="range-start">
           to <input type="datetime-local" id="range-end">
+          <span id="tz-note" class="hint" title="Footage is requested using this computer's clock. If your cameras are in a different time zone, adjust the times accordingly."></span>
         </span>
       </div>
       <p id="estimate-line" class="inline-status"></p>
@@ -166,12 +167,16 @@
           <span id="lib-clip-size" class="inline-status"></span>
         </div>
 
+        <div class="row lib-toolbar">
+          <span id="lib-filters" class="lib-filters"></span>
+          <span class="spacer"></span>
+          <button id="lib-zoom-out" class="btn lib-zbtn" title="Zoom out">−</button>
+          <button id="lib-zoom-in" class="btn lib-zbtn" title="Zoom in (centers on the playhead)">+</button>
+          <button id="lib-zoom-reset" class="btn lib-zbtn">Full day</button>
+        </div>
         <div class="lib-tl-wrap">
           <div id="lib-rail" class="lib-rail" title="Click anywhere with footage to play that moment"></div>
-          <div class="lib-ticks">
-            <span>12 AM</span><span>4 AM</span><span>8 AM</span>
-            <span>12 PM</span><span>4 PM</span><span>8 PM</span><span>12 AM</span>
-          </div>
+          <div class="lib-ticks" id="lib-ticks"></div>
         </div>
 
         <div id="lib-clip-list" class="history-list compact"></div>

@@ -72,6 +72,7 @@ def scan(destination: str) -> dict:
                     "startEpoch": int(start),
                     "durationSec": int(duration),
                     "bytes": cam.get("bytes") or 0,
+                    "events": cam.get("events") or [],
                 })
         if clips:
             clips.sort(key=lambda c: (c["camera"].lower(), c["startEpoch"]))

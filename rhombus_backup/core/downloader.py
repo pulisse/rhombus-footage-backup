@@ -304,8 +304,27 @@ class BackupRun:
         raise last_exc
 
     # -- manifest ---------------------------------------------------------------
+    def _fetch_events(self) -> dict:
+        """Activity events per camera for the backed-up window, so the Library
+        can overlay them offline later. Best-effort: a failure here never
+        fails the backup."""
+        events = {}
+        if self._cancel.is_set():
+            return events
+        for j in self.jobs:
+            if j.status != "done":
+                continue
+            try:
+                events[j.uuid] = self.client.get_footage_seekpoints(
+                    j.uuid, self.start_epoch, self.duration_sec
+                )[:5000]
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("Could not fetch events for %s: %s", j.name, exc)
+        return events
+
     def _write_manifest(self):
         try:
+            events = self._fetch_events()
             start_local = datetime.fromtimestamp(self.start_epoch)
             folder = Path(self.cfg.destination) / naming.date_folder(start_local)
             folder.mkdir(parents=True, exist_ok=True)
@@ -322,6 +341,7 @@ class BackupRun:
                     {
                         "uuid": j.uuid, "name": j.name, "status": j.status,
                         "file": j.output, "bytes": j.bytes, "error": j.error,
+                        "events": events.get(j.uuid, []),
                     }
                     for j in self.jobs
                 ],

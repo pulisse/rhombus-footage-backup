@@ -268,3 +268,50 @@ details.advanced summary { cursor: pointer; color: var(--muted); font-weight: 60
 .lib-entry { cursor: pointer; }
 .lib-entry:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .lib-play { color: var(--accent); font-weight: 700; margin-right: 4px; }
+
+/* library: event overlay, filters, zoom */
+:root {
+  --ev-human: #7c3aed; --ev-vehicle: #0891b2; --ev-sound: #16a34a;
+  --ev-motion: #2563eb; --ev-other: #d97706;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ev-human: #a78bfa; --ev-vehicle: #22d3ee; --ev-sound: #4ade80;
+    --ev-motion: #60a5fa; --ev-other: #fbbf24;
+  }
+}
+.lib-toolbar { margin: 12px 0 2px; }
+.lib-filters { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.lib-chip {
+  font-size: 12.5px; padding: 3px 12px; border-radius: 999px; cursor: pointer;
+  border: 1.5px solid var(--line); color: var(--muted); user-select: none;
+}
+.lib-chip.human   { border-color: var(--ev-human); }
+.lib-chip.vehicle { border-color: var(--ev-vehicle); }
+.lib-chip.sound   { border-color: var(--ev-sound); }
+.lib-chip.motion  { border-color: var(--ev-motion); }
+.lib-chip.other   { border-color: var(--ev-other); }
+.lib-chip.on { color: #fff; font-weight: 600; }
+.lib-chip.on.human   { background: var(--ev-human); }
+.lib-chip.on.vehicle { background: var(--ev-vehicle); }
+.lib-chip.on.sound   { background: var(--ev-sound); }
+.lib-chip.on.motion  { background: var(--ev-motion); }
+.lib-chip.on.other   { background: var(--ev-other); }
+.lib-zbtn { padding: 4px 12px; font-size: 13px; }
+.lib-ev {
+  position: absolute; top: 3px; width: 3px; height: 9px; border-radius: 2px;
+  cursor: pointer;
+}
+.lib-ev:hover { transform: scaleX(2); }
+.lib-ev.human   { background: var(--ev-human); }
+.lib-ev.vehicle { background: var(--ev-vehicle); }
+.lib-ev.sound   { background: var(--ev-sound); }
+.lib-ev.motion  { background: var(--ev-motion); }
+.lib-ev.other   { background: var(--ev-other); }
+.lib-ticks { position: relative; height: 18px; display: block; }
+.lib-tick-lbl {
+  position: absolute; top: 2px; transform: translateX(-50%);
+  font-size: 11px; color: var(--muted); white-space: nowrap;
+}
+.entry.clickable { cursor: pointer; }
+.entry.clickable:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }

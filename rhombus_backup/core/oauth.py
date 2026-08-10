@@ -222,6 +222,7 @@ class SignInFlow:
             return api_key
         except FriendlyError as exc:
             self._set("failed", str(exc))
+            _log.warning("Sign-in failed: %s (%s)", exc, exc.technical or "no detail")
             raise
         except requests.RequestException as exc:
             self._set("failed", "Couldn't reach Rhombus to finish signing in. "

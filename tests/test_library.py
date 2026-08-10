@@ -91,3 +91,23 @@ def test_resolve_media_rejects(tmp_path, rel):
 def test_resolve_media_no_destination(tmp_path):
     with pytest.raises(FriendlyError):
         library.resolve_media("", "anything.mp4")
+
+
+def test_scan_passes_events_through(tmp_path):
+    import json as _json
+    clip = _make_backup(tmp_path)
+    mf = next((tmp_path / "2026-08-05").glob("manifest_*.json"))
+    manifest = _json.loads(mf.read_text())
+    manifest["cameras"][0]["events"] = [
+        {"ts": 1754401000, "a": "MOTION_HUMAN"}, {"ts": 1754402000, "a": "MOTION_CAR"},
+    ]
+    mf.write_text(_json.dumps(manifest))
+    result = library.scan(str(tmp_path))
+    events = result["days"][0]["clips"][0]["events"]
+    assert [e["a"] for e in events] == ["MOTION_HUMAN", "MOTION_CAR"]
+
+
+def test_scan_defaults_missing_events(tmp_path):
+    _make_backup(tmp_path)  # manifest written without events key
+    result = library.scan(str(tmp_path))
+    assert result["days"][0]["clips"][0]["events"] == []
