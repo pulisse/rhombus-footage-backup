@@ -49,6 +49,20 @@
   }
   .wrap { max-width: 960px; margin: 0 auto; padding: 0 24px; }
 
+  /* Disclaimer banner */
+  .disclaimer {
+    background: #fef3cd;
+    color: #7a5a00;
+    text-align: center;
+    font-size: 13.5px;
+    padding: 8px 16px;
+    border-bottom: 1px solid #f0dfa0;
+  }
+  .disclaimer b { font-weight: 700; }
+  @media (prefers-color-scheme: dark) {
+    .disclaimer { background: #2e2609; color: #eac54f; border-bottom-color: #4a3d12; }
+  }
+
   /* Nav */
   nav {
     border-bottom: 1px solid var(--border);
@@ -182,6 +196,8 @@
     </linearGradient>
   </defs>
 </svg>
+
+<div class="disclaimer"><b>Heads up:</b> this is not an officially released Rhombus product and is not supported by Rhombus Support. Built on the Rhombus public API.</div>
 
 <nav>
   <div class="wrap nav-inner">
