@@ -233,3 +233,38 @@ details.advanced summary { cursor: pointer; color: var(--muted); font-weight: 60
 #fb-places { max-width: 220px; }
 
 .notify-label { min-width: 92px; font-size: 13.5px; color: var(--muted); }
+
+/* library: player + 24h timeline */
+#lib-video {
+  width: 100%; aspect-ratio: 16 / 9; border-radius: 10px;
+  background: #000; display: block;
+}
+.lib-clip-row { margin: 8px 0 2px; }
+.lib-tl-wrap { margin: 10px 0 16px; }
+.lib-rail {
+  position: relative; height: 40px; cursor: pointer;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+  overflow: hidden;
+}
+.lib-tick {
+  position: absolute; bottom: 0; width: 1px; height: 8px;
+  background: var(--line); pointer-events: none;
+}
+.lib-tick.major { height: 14px; background: color-mix(in srgb, var(--muted) 50%, transparent); }
+.lib-cov {
+  position: absolute; top: 8px; bottom: 8px; border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 38%, transparent);
+  pointer-events: none;
+}
+.lib-rail:hover .lib-cov { background: color-mix(in srgb, var(--accent) 50%, transparent); }
+.lib-playhead {
+  position: absolute; top: 0; bottom: 0; width: 2px;
+  background: var(--bad); pointer-events: none;
+}
+.lib-ticks {
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: var(--muted); margin-top: 4px;
+}
+.lib-entry { cursor: pointer; }
+.lib-entry:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.lib-play { color: var(--accent); font-weight: 700; margin-right: 4px; }

@@ -5,11 +5,11 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_file, send_from_directory
 
 from .. import __version__, APP_DISPLAY_NAME
 from ..core import config as config_mod
-from ..core import fs_browse, history, notify, os_sched, space
+from ..core import fs_browse, history, library, notify, os_sched, space
 from ..core.api import RhombusClient
 from ..core.config import SCHEDULE_CHOICES
 from ..core.errors import FriendlyError, friendly_exception
@@ -223,6 +223,25 @@ def create_app(service: AppService) -> Flask:
     @app.route("/api/history")
     def get_history():
         return jsonify({"ok": True, "entries": history.read(limit=50)})
+
+    # ---- library (browse backed-up footage) -----------------------------------
+    @app.route("/api/library")
+    def library_index():
+        try:
+            return jsonify({"ok": True, **library.scan(service.cfg.destination or "")})
+        except Exception as exc:  # noqa: BLE001
+            return fail(exc)
+
+    @app.route("/api/library/media")
+    def library_media():
+        try:
+            path = library.resolve_media(
+                service.cfg.destination or "", request.args.get("path", "")
+            )
+        except FriendlyError as exc:
+            return fail(exc, 404)
+        # conditional=True enables HTTP Range requests so <video> can seek.
+        return send_file(path, conditional=True)
 
     @app.route("/api/test-notification", methods=["POST"])
     def test_notification():

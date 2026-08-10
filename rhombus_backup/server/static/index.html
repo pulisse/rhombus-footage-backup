@@ -11,6 +11,7 @@
   <div class="brand">📹 <span id="app-title">Rhombus Backup Buddy</span></div>
   <nav id="main-nav" class="hidden">
     <button data-view="main" class="nav-btn active">Backup</button>
+    <button data-view="library" class="nav-btn">Library</button>
     <button data-view="history" class="nav-btn">History</button>
     <button data-view="settings" class="nav-btn">Settings</button>
   </nav>
@@ -138,6 +139,43 @@
     <div class="card">
       <h3>Recent backups</h3>
       <div id="recent-list" class="history-list compact"></div>
+    </div>
+  </section>
+
+  <!-- ============================== LIBRARY ============================== -->
+  <section id="view-library" class="view hidden">
+    <div class="card">
+      <div class="row space-between">
+        <h2>Library</h2>
+        <span class="row" style="margin:0">
+          <select id="lib-camera"></select>
+          <select id="lib-date"></select>
+        </span>
+      </div>
+
+      <div id="lib-empty" class="hidden">
+        <p>No backed-up footage to browse yet. Run a backup and it will show
+           up here, organized by day and camera.</p>
+      </div>
+
+      <div id="lib-viewer" class="hidden">
+        <video id="lib-video" controls playsinline preload="metadata"></video>
+        <p id="lib-video-error" class="error-text hidden"></p>
+        <div class="row space-between lib-clip-row">
+          <span id="lib-clip-label" class="inline-status">Pick a moment on the timeline below.</span>
+          <span id="lib-clip-size" class="inline-status"></span>
+        </div>
+
+        <div class="lib-tl-wrap">
+          <div id="lib-rail" class="lib-rail" title="Click anywhere with footage to play that moment"></div>
+          <div class="lib-ticks">
+            <span>12 AM</span><span>4 AM</span><span>8 AM</span>
+            <span>12 PM</span><span>4 PM</span><span>8 PM</span><span>12 AM</span>
+          </div>
+        </div>
+
+        <div id="lib-clip-list" class="history-list compact"></div>
+      </div>
     </div>
   </section>
 

@@ -34,6 +34,7 @@ function showView(name) {
   document.querySelectorAll(".nav-btn").forEach((b) =>
     b.classList.toggle("active", b.dataset.view === name));
   if (name === "history") loadHistory("history-list", false);
+  if (name === "library") initLibrary();
   if (name === "settings") initSettings();
   if (name === "main") { loadHistory("recent-list", true); refreshEstimate(); }
 }
@@ -584,6 +585,173 @@ function renderCameraProgress(run) {
     if (!seen.has(el.dataset.uuid)) el.remove(); // rows from a previous run
   });
 }
+
+/* ================= LIBRARY ================= */
+/* Browse backed-up footage: pick camera + day, click the 24h timeline to play
+   that moment. Clip = one backed-up file; the timeline shows where footage
+   exists (coverage) and a playhead that follows the video. */
+const LIB = { days: [], cameras: [], camera: null, date: null, clip: null, midnight: 0 };
+
+async function initLibrary() {
+  const r = await api("/api/library");
+  const empty = !r.ok || !r.days.length;
+  $("lib-empty").classList.toggle("hidden", !empty);
+  $("lib-viewer").classList.toggle("hidden", empty);
+  if (empty) return;
+  LIB.days = r.days;
+  LIB.cameras = r.cameras;
+  if (!LIB.cameras.includes(LIB.camera)) LIB.camera = LIB.cameras[0];
+
+  const camSel = $("lib-camera");
+  camSel.innerHTML = "";
+  LIB.cameras.forEach((name) => {
+    const o = document.createElement("option");
+    o.value = name; o.textContent = "📷 " + name;
+    camSel.appendChild(o);
+  });
+  camSel.value = LIB.camera;
+  renderLibDates();
+}
+
+function libDatesForCamera() {
+  return LIB.days.filter((d) => d.clips.some((c) => c.camera === LIB.camera));
+}
+
+function renderLibDates() {
+  const dates = libDatesForCamera();
+  const dateSel = $("lib-date");
+  dateSel.innerHTML = "";
+  dates.forEach((d) => {
+    const o = document.createElement("option");
+    o.value = d.date;
+    o.textContent = new Date(d.date + "T00:00").toLocaleDateString([], {
+      weekday: "short", month: "short", day: "numeric", year: "numeric",
+    });
+    dateSel.appendChild(o);
+  });
+  if (!dates.some((d) => d.date === LIB.date)) LIB.date = dates.length ? dates[0].date : null;
+  if (LIB.date) dateSel.value = LIB.date;
+  renderLibDay();
+}
+
+function libClips() {
+  const day = LIB.days.find((d) => d.date === LIB.date);
+  return day ? day.clips.filter((c) => c.camera === LIB.camera) : [];
+}
+
+function renderLibDay() {
+  const clips = libClips();
+  LIB.midnight = LIB.date ? new Date(LIB.date + "T00:00").getTime() / 1000 : 0;
+  const rail = $("lib-rail");
+  rail.innerHTML = "";
+
+  // hour ticks
+  for (let h = 1; h < 24; h++) {
+    const t = document.createElement("span");
+    t.className = "lib-tick" + (h % 4 === 0 ? " major" : "");
+    t.style.left = (100 * h / 24) + "%";
+    rail.appendChild(t);
+  }
+  // footage coverage
+  clips.forEach((c) => {
+    const left = Math.max(0, 100 * (c.startEpoch - LIB.midnight) / 86400);
+    const width = Math.min(100 - left, 100 * c.durationSec / 86400);
+    const seg = document.createElement("div");
+    seg.className = "lib-cov";
+    seg.style.left = left + "%";
+    seg.style.width = Math.max(width, 0.4) + "%";
+    rail.appendChild(seg);
+  });
+  const ph = document.createElement("div");
+  ph.className = "lib-playhead hidden";
+  ph.id = "lib-playhead";
+  rail.appendChild(ph);
+
+  // clip list
+  const list = $("lib-clip-list");
+  list.innerHTML = "";
+  clips.forEach((c) => {
+    const div = document.createElement("div");
+    div.className = "entry lib-entry";
+    const from = new Date(c.startEpoch * 1000);
+    const to = new Date((c.startEpoch + c.durationSec) * 1000);
+    const fmt = (d) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    div.innerHTML = `<span class="lib-play">▶</span> ${fmt(from)} – ${fmt(to)}`
+      + ` <span class="inline-status">· ${human(c.bytes)}</span>`;
+    div.addEventListener("click", () => loadClip(c, 0, true));
+    list.appendChild(div);
+  });
+
+  // reset player
+  const video = $("lib-video");
+  video.removeAttribute("src");
+  video.load();
+  LIB.clip = null;
+  $("lib-clip-label").textContent = clips.length
+    ? "Pick a moment on the timeline, or press ▶ on a clip below."
+    : "No footage from this camera on this day.";
+  $("lib-clip-size").textContent = "";
+  $("lib-video-error").classList.add("hidden");
+}
+
+function loadClip(clip, offsetSec, autoplay) {
+  LIB.clip = clip;
+  const video = $("lib-video");
+  $("lib-video-error").classList.add("hidden");
+  video.src = "/api/library/media?path=" + encodeURIComponent(clip.file);
+  const seek = () => {
+    if (offsetSec > 0 && offsetSec < (video.duration || clip.durationSec)) {
+      video.currentTime = offsetSec;
+    }
+    if (autoplay) video.play().catch(() => {});
+    video.removeEventListener("loadedmetadata", seek);
+  };
+  video.addEventListener("loadedmetadata", seek);
+  const name = clip.file.split("/").pop();
+  $("lib-clip-label").textContent = "Clip: " + name;
+  $("lib-clip-size").textContent = human(clip.bytes);
+}
+
+$("lib-rail").addEventListener("click", (e) => {
+  const rect = $("lib-rail").getBoundingClientRect();
+  const frac = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+  const t = LIB.midnight + frac * 86400;
+  const clips = libClips();
+  let clip = clips.find((c) => t >= c.startEpoch && t < c.startEpoch + c.durationSec);
+  let offset = clip ? t - clip.startEpoch : 0;
+  if (!clip) {
+    // clicked a gap: jump to the start of the next clip that day
+    clip = clips.find((c) => c.startEpoch > t);
+    offset = 0;
+  }
+  if (clip) loadClip(clip, offset, true);
+});
+
+$("lib-video").addEventListener("timeupdate", () => {
+  const ph = $("lib-playhead");
+  if (!ph || !LIB.clip) return;
+  const t = LIB.clip.startEpoch + $("lib-video").currentTime;
+  ph.classList.remove("hidden");
+  ph.style.left = Math.min(100, Math.max(0, 100 * (t - LIB.midnight) / 86400)) + "%";
+});
+
+$("lib-video").addEventListener("error", () => {
+  if (!LIB.clip) return;
+  const err = $("lib-video-error");
+  err.textContent = "This clip can't be played here. It may use a video format "
+    + "(like H.265) this window doesn't support - the file itself is fine and "
+    + "plays in VLC or your system video player.";
+  err.classList.remove("hidden");
+});
+
+$("lib-camera").addEventListener("change", () => {
+  LIB.camera = $("lib-camera").value;
+  renderLibDates();
+});
+$("lib-date").addEventListener("change", () => {
+  LIB.date = $("lib-date").value;
+  renderLibDay();
+});
 
 /* ================= HISTORY ================= */
 async function loadHistory(elId, compact) {
