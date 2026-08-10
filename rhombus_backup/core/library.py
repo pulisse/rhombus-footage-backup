@@ -37,7 +37,7 @@ def scan(destination: str) -> dict:
     for day_dir in sorted(root.iterdir(), reverse=True):
         if not day_dir.is_dir() or not _DATE_DIR.match(day_dir.name):
             continue
-        seen_files = set()
+        seen_files = {}  # rel path -> clip dict, so a richer duplicate can win
         clips = []
         for mf in sorted(day_dir.glob("manifest_*.json")):
             try:
@@ -62,18 +62,27 @@ def scan(destination: str) -> dict:
                     # that actually live under the current backup folder.
                     continue
                 rel_posix = rel.as_posix()
-                if rel_posix in seen_files or not path.is_file():
+                if not path.is_file():
                     continue
-                seen_files.add(rel_posix)
-                cameras.add(cam.get("name") or rel.parts[0])
-                clips.append({
+                clip = {
                     "camera": cam.get("name") or rel.parts[0],
                     "file": rel_posix,
                     "startEpoch": int(start),
                     "durationSec": int(duration),
                     "bytes": cam.get("bytes") or 0,
                     "events": cam.get("events") or [],
-                })
+                }
+                existing = seen_files.get(rel_posix)
+                if existing is not None:
+                    # Same file written by more than one run (e.g. the same
+                    # range pulled again after an upgrade): keep whichever
+                    # manifest carries more event metadata.
+                    if len(clip["events"]) > len(existing["events"]):
+                        existing.update(clip)
+                    continue
+                seen_files[rel_posix] = clip
+                cameras.add(clip["camera"])
+                clips.append(clip)
         if clips:
             clips.sort(key=lambda c: (c["camera"].lower(), c["startEpoch"]))
             days.append({"date": day_dir.name, "clips": clips})

@@ -62,6 +62,22 @@ def test_scan_dedupes_same_file_across_manifests(tmp_path):
     assert len(result["days"][0]["clips"]) == 1
 
 
+def test_scan_duplicate_prefers_manifest_with_events(tmp_path):
+    import json as _json
+    # Same range pulled twice: an old run without events sorts FIRST, the
+    # re-pull with events sorts second. The events must still win.
+    _make_backup(tmp_path, run_id="aaa-no-events")
+    _make_backup(tmp_path, run_id="zzz-with-events")
+    mf = tmp_path / "2026-08-05" / "manifest_zzz-with-events.json"
+    manifest = _json.loads(mf.read_text())
+    manifest["cameras"][0]["events"] = [{"ts": 1754401000, "a": "MOTION_HUMAN"}]
+    mf.write_text(_json.dumps(manifest))
+    result = library.scan(str(tmp_path))
+    clips = result["days"][0]["clips"]
+    assert len(clips) == 1
+    assert [e["a"] for e in clips[0]["events"]] == ["MOTION_HUMAN"]
+
+
 def test_scan_ignores_junk(tmp_path):
     _make_backup(tmp_path)
     (tmp_path / "2026-08-05" / "manifest_bad.json").write_text("{not json")
