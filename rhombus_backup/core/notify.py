@@ -71,10 +71,33 @@ def should_notify(cfg: AppConfig, snap: dict) -> bool:
 
 
 # -- channels -----------------------------------------------------------------
+def _teams_payload(text: str) -> dict:
+    """Teams message wrapping the text in an Adaptive Card.
+
+    Modern Teams webhooks are Power Automate "Workflows", whose standard
+    template only accepts Adaptive Card attachments - a plain {"text": ...}
+    post fails with "Property 'type' must be 'AdaptiveCard'". The legacy
+    Office 365 connector webhooks accept this format too.
+    """
+    return {
+        "type": "message",
+        "attachments": [{
+            "contentType": "application/vnd.microsoft.card.adaptive",
+            "content": {
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                "type": "AdaptiveCard",
+                "version": "1.4",
+                "body": [{"type": "TextBlock", "text": text, "wrap": True}],
+            },
+        }],
+    }
+
+
 def _post_webhook(name: str, url: str, text: str) -> Optional[str]:
     """Returns an error string, or None on success."""
+    payload = _teams_payload(text) if name == "Teams" else {"text": text}
     try:
-        resp = requests.post(url, json={"text": text}, timeout=TIMEOUT)
+        resp = requests.post(url, json=payload, timeout=TIMEOUT)
         if resp.status_code >= 300:
             return "{} webhook returned HTTP {}".format(name, resp.status_code)
         return None

@@ -54,7 +54,15 @@ def test_send_all_posts_to_each_webhook():
     assert errors == []
     urls = [c.args[0] for c in post.call_args_list]
     assert urls == [cfg.slack_webhook, cfg.teams_webhook, cfg.gchat_webhook]
-    assert all(c.kwargs["json"] == {"text": "body"} for c in post.call_args_list)
+    slack_json, teams_json, gchat_json = [c.kwargs["json"] for c in post.call_args_list]
+    assert slack_json == {"text": "body"}
+    assert gchat_json == {"text": "body"}
+    # Teams (Power Automate "Workflows") requires an Adaptive Card message
+    assert teams_json["type"] == "message"
+    card = teams_json["attachments"][0]["content"]
+    assert card["type"] == "AdaptiveCard"
+    assert card["body"][0]["text"] == "body"
+    assert card["body"][0]["wrap"] is True
 
 
 def test_webhook_failure_reported_not_raised():
