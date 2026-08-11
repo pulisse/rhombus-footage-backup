@@ -1,0 +1,12 @@
+services:
+  backup-buddy:
+    image: ghcr.io/pulisse/rhombus-backup-buddy:latest
+    container_name: rhombus-backup-buddy
+    ports:
+      - "8600:8600"
+    volumes:
+      - ./config:/config
+      # Left side = the folder on your NAS where footage should land.
+      # UGREEN example: /volume1/CameraBackups
+      - /volume1/CameraBackups:/backups
+    restart: unless-stopped

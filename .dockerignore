@@ -1,0 +1,14 @@
+.git
+.github
+.venv-build
+.pytest_cache
+build
+dist
+docs
+landing
+tests
+scripts
+oauth_client.json
+*.md
+__pycache__
+**/__pycache__

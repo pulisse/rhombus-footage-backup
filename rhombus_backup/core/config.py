@@ -2,6 +2,10 @@
 
 The API key is NEVER written to the config file or logs. It lives in the
 Windows Credential Manager / macOS Keychain / Secret Service via `keyring`.
+
+Where no OS credential store exists (Docker / NAS server mode), credentials
+fall back to an owner-only (0600) file inside the config directory - keep
+that volume private, as you would any NAS app's config.
 """
 import json
 from dataclasses import dataclass, field, asdict
@@ -90,39 +94,80 @@ def save(cfg: AppConfig, path: Optional[Path] = None) -> None:
     tmp.replace(path)
 
 
-def get_api_key() -> Optional[str]:
+# -- credentials --------------------------------------------------------------
+# keyring first; file fallback (0600) for platforms with no credential store.
+
+def _cred_file() -> Path:
+    return paths.config_dir() / "credentials.json"
+
+
+def _cred_read() -> dict:
+    try:
+        return json.loads(_cred_file().read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _cred_write(data: dict) -> None:
+    f = _cred_file()
+    tmp = f.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data), encoding="utf-8")
+    tmp.chmod(0o600)
+    tmp.replace(f)
+
+
+def _cred_get(name: str) -> Optional[str]:
     import keyring
     try:
-        return keyring.get_password(KEYRING_SERVICE, KEYRING_USER)
+        value = keyring.get_password(KEYRING_SERVICE, name)
+        if value:
+            return value
     except Exception:
-        return None
+        pass
+    return _cred_read().get(name) or None
+
+
+def _cred_set(name: str, value: str) -> None:
+    import keyring
+    try:
+        keyring.set_password(KEYRING_SERVICE, name, value)
+        return
+    except Exception:
+        pass
+    _cred_write({**_cred_read(), name: value})
+
+
+def _cred_delete(name: str) -> None:
+    import keyring
+    try:
+        keyring.delete_password(KEYRING_SERVICE, name)
+    except Exception:
+        pass
+    data = _cred_read()
+    if name in data:
+        data.pop(name)
+        _cred_write(data)
+
+
+def get_api_key() -> Optional[str]:
+    return _cred_get(KEYRING_USER)
 
 
 def set_api_key(key: str) -> None:
-    import keyring
-    keyring.set_password(KEYRING_SERVICE, KEYRING_USER, key)
+    _cred_set(KEYRING_USER, key)
 
 
 def delete_api_key() -> None:
-    import keyring
-    try:
-        keyring.delete_password(KEYRING_SERVICE, KEYRING_USER)
-    except Exception:
-        pass
+    _cred_delete(KEYRING_USER)
 
 
 KEYRING_SMTP_USER = "smtp-password"
 
 
 def get_smtp_password() -> Optional[str]:
-    import keyring
-    try:
-        return keyring.get_password(KEYRING_SERVICE, KEYRING_SMTP_USER)
-    except Exception:
-        return None
+    return _cred_get(KEYRING_SMTP_USER)
 
 
 def set_smtp_password(password: str) -> None:
-    import keyring
     if password:
-        keyring.set_password(KEYRING_SERVICE, KEYRING_SMTP_USER, password)
+        _cred_set(KEYRING_SMTP_USER, password)

@@ -50,3 +50,61 @@ def test_validate_catches_problems():
     problems = cfg.validate()
     assert len(problems) == 4
     assert AppConfig(destination="/d", setup_complete=True).validate() == []
+
+
+# -- credential file fallback (Docker/NAS: no OS credential store) -------------
+
+class _NoKeyring:
+    """Stands in for the keyring module when no backend exists."""
+    def get_password(self, *a):
+        raise RuntimeError("no backend")
+    def set_password(self, *a):
+        raise RuntimeError("no backend")
+    def delete_password(self, *a):
+        raise RuntimeError("no backend")
+
+
+def _use_file_fallback(monkeypatch, tmp_path):
+    import sys
+    monkeypatch.setitem(sys.modules, "keyring", _NoKeyring())
+    monkeypatch.setattr(config_mod.paths, "config_dir", lambda: tmp_path)
+
+
+def test_api_key_file_fallback_roundtrip(monkeypatch, tmp_path):
+    _use_file_fallback(monkeypatch, tmp_path)
+    assert config_mod.get_api_key() is None
+    config_mod.set_api_key("rhombus-key-123")
+    assert config_mod.get_api_key() == "rhombus-key-123"
+    cred = tmp_path / "credentials.json"
+    assert cred.is_file()
+    assert (cred.stat().st_mode & 0o777) == 0o600  # owner-only
+    config_mod.delete_api_key()
+    assert config_mod.get_api_key() is None
+
+
+def test_smtp_password_file_fallback(monkeypatch, tmp_path):
+    _use_file_fallback(monkeypatch, tmp_path)
+    config_mod.set_api_key("the-api-key")
+    config_mod.set_smtp_password("hunter2")
+    # both credentials coexist in the fallback file
+    assert config_mod.get_api_key() == "the-api-key"
+    assert config_mod.get_smtp_password() == "hunter2"
+
+
+def test_working_keyring_still_wins(monkeypatch, tmp_path):
+    import sys
+
+    class _GoodKeyring:
+        store = {}
+        def get_password(self, svc, user):
+            return self.store.get(user)
+        def set_password(self, svc, user, val):
+            self.store[user] = val
+        def delete_password(self, svc, user):
+            self.store.pop(user, None)
+
+    monkeypatch.setitem(sys.modules, "keyring", _GoodKeyring())
+    monkeypatch.setattr(config_mod.paths, "config_dir", lambda: tmp_path)
+    config_mod.set_api_key("in-keychain")
+    assert config_mod.get_api_key() == "in-keychain"
+    assert not (tmp_path / "credentials.json").exists()  # file never touched

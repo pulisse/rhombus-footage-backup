@@ -2,6 +2,7 @@
 
   RhombusBackup                # launch the desktop app (pywebview or browser)
   RhombusBackup --run-backup   # headless scheduled backup (used by OS scheduler)
+  RhombusBackup --serve        # web UI as a long-running server (Docker/NAS)
 """
 import argparse
 import logging
@@ -51,6 +52,25 @@ def run_headless() -> int:
     return 0 if snap["state"] in ("done",) else 1
 
 
+def run_serve() -> int:
+    """Container/NAS mode: web UI on a fixed host/port, no window, no browser.
+
+    Bind address and port come from RBB_HOST / RBB_PORT (the Docker image
+    sets 0.0.0.0:8600). The in-app scheduler runs in-process, so scheduled
+    backups just work as long as the container is up.
+    """
+    import os
+    from rhombus_backup.server.app import create_app
+
+    host = os.environ.get("RBB_HOST", "127.0.0.1")
+    port = int(os.environ.get("RBB_PORT", "8600"))
+    service = AppService()
+    service.start_scheduler()
+    print("{} serving at http://{}:{}/".format(APP_DISPLAY_NAME, host, port), flush=True)
+    create_app(service).run(host=host, port=port, threaded=True, use_reloader=False)
+    return 0
+
+
 def run_gui() -> int:
     from rhombus_backup.server import app as server_mod
     from rhombus_backup.server.app import create_app
@@ -97,8 +117,16 @@ def main() -> int:
         "--run-backup", action="store_true",
         help="run one scheduled backup without opening the app window",
     )
+    parser.add_argument(
+        "--serve", action="store_true",
+        help="serve the web UI without a window (Docker/NAS; see RBB_HOST/RBB_PORT)",
+    )
     args = parser.parse_args()
-    return run_headless() if args.run_backup else run_gui()
+    if args.run_backup:
+        return run_headless()
+    if args.serve:
+        return run_serve()
+    return run_gui()
 
 
 if __name__ == "__main__":

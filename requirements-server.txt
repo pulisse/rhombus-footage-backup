@@ -1,0 +1,6 @@
+# Server/Docker mode: everything except the desktop window (pywebview) and
+# the ffmpeg fetcher (the image installs ffmpeg from apt).
+flask>=2.2
+requests>=2.28
+urllib3>=1.26
+keyring>=23.0

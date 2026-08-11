@@ -39,6 +39,22 @@ Either way, access is stored in your computer's secure credential store
 
 ---
 
+## Run it on a NAS instead (Docker)
+
+Have a NAS or an always-on box? Run the same app there as a container —
+the web UI is served on your LAN and scheduled backups run around the
+clock with no computer left on:
+
+```bash
+docker run -d -p 8600:8600 \
+  -v "$PWD/config:/config" -v /path/to/backups:/backups \
+  --restart unless-stopped ghcr.io/pulisse/rhombus-backup-buddy:latest
+```
+
+Full walkthrough (including UGREEN UGOS steps): [docs/DOCKER.md](docs/DOCKER.md).
+
+---
+
 ## Everyday use
 
 > *[screenshot placeholder: main screen with progress bars]*
