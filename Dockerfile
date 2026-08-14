@@ -16,7 +16,8 @@ COPY rhombus_backup ./rhombus_backup
 # /config holds settings + credentials (0600) + history; /backups is footage.
 ENV XDG_CONFIG_HOME=/config \
     RBB_HOST=0.0.0.0 \
-    RBB_PORT=8600
+    RBB_PORT=8600 \
+    RBB_DESTINATION=/backups
 VOLUME ["/config", "/backups"]
 EXPOSE 8600
 

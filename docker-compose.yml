@@ -9,4 +9,13 @@ services:
       # Left side = the folder on your NAS where footage should land.
       # UGREEN example: /volume1/CameraBackups
       - /volume1/CameraBackups:/backups
+    # Optional: configure everything here and skip the setup wizard -
+    # handy when you deploy remotely and can't reach port 8600 yet.
+    # Applied once on first start; afterwards the in-app Settings win.
+    # environment:
+    #   RBB_API_KEY: "paste-your-rhombus-api-key"
+    #   RBB_SCHEDULE: hourly        # every4h | daily_midnight | weekdays_business
+    #   RBB_CAMERAS: all            # or comma-separated camera UUIDs
+    #   RBB_RETENTION_DAYS: "30"
+    #   RBB_USE_WAN: "true"         # if this NAS is NOT on the cameras' network
     restart: unless-stopped

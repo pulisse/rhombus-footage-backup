@@ -65,6 +65,8 @@ def run_serve() -> int:
     host = os.environ.get("RBB_HOST", "127.0.0.1")
     port = int(os.environ.get("RBB_PORT", "8600"))
     service = AppService()
+    from rhombus_backup.core.env_setup import apply_env_setup
+    apply_env_setup(service.cfg)  # headless first-run setup, if env provides it
     service.start_scheduler()
     print("{} serving at http://{}:{}/".format(APP_DISPLAY_NAME, host, port), flush=True)
     create_app(service).run(host=host, port=port, threaded=True, use_reloader=False)

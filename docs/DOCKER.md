@@ -48,6 +48,33 @@ docker run -d --name rhombus-backup-buddy \
   ghcr.io/pulisse/rhombus-backup-buddy:latest
 ```
 
+## Deploying remotely? Skip the wizard with environment variables
+
+NAS cloud portals (UGREEN's ug.link, etc.) only carry the NAS's own web
+desktop - they won't forward the container's port 8600. If you're
+installing from afar and can't reach the wizard, put the settings in the
+compose file instead and the container configures itself on first start:
+
+```yaml
+    environment:
+      RBB_API_KEY: "paste-your-rhombus-api-key"
+      RBB_SCHEDULE: hourly          # every4h | daily_midnight | weekdays_business
+      RBB_CAMERAS: all              # or comma-separated camera UUIDs
+      RBB_RETENTION_DAYS: "30"
+      RBB_USE_WAN: "true"           # if the NAS is NOT on the cameras' network
+```
+
+- Applied **once**, while setup is incomplete; after that the in-app
+  Settings are the source of truth and these are ignored.
+- `RBB_CAMERAS: all` selects every camera in the org at first start;
+  cameras added to Rhombus later won't join automatically (pick them in
+  Settings, like on desktop).
+- The container log (Docker → Log) says exactly what happened:
+  "Setup completed from environment" or why it declined.
+- The API key sits in plain text in the compose file, readable by anyone
+  who administers the NAS. Prefer a key scoped to video read access, and
+  rotate it if the NAS isn't yours.
+
 ## Good to know
 
 - **Keep it on your LAN.** The web UI has no login of its own — anyone who
