@@ -221,12 +221,13 @@
 <header>
   <div class="wrap">
     <img class="hero-logo" src="logo.png" alt="Rhombus Backup Buddy mascot logo">
-    <span class="badge">Free · Mac &amp; Windows</span>
+    <span class="badge">Free · Mac, Windows &amp; NAS/Linux</span>
     <h1>Rhombus Backup&nbsp;Buddy</h1>
     <p class="tagline">Back up your Rhombus camera footage to your own drive — an external disk, a NAS, or this computer. Automatic schedules, plain MP4 files, no technical skills needed.</p>
     <div class="cta-row">
       <a class="btn btn-primary" href="https://github.com/pulisse/rhombus-footage-backup/releases/latest/download/Rhombus-Backup-Buddy-mac.zip" id="dl-mac"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.03 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.56-1.702"/></svg>Download for Mac</a>
       <a class="btn btn-primary" href="https://github.com/pulisse/rhombus-footage-backup/releases/latest/download/RhombusBackupBuddy.exe" id="dl-win"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>Download for Windows</a>
+      <a class="btn btn-secondary" href="#nas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm2 2.5A1.5 1.5 0 1 0 7.5 7 1.5 1.5 0 0 0 6 5.5zM4 11h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1zm2 2.5A1.5 1.5 0 1 0 7.5 15 1.5 1.5 0 0 0 6 13.5zM8 21a4 4 0 0 1 8 0z"/></svg>Linux &amp; NAS (Docker)</a>
       <a class="btn btn-secondary" href="https://github.com/pulisse/rhombus-footage-backup">View on GitHub</a>
     </div>
     <p class="cta-note">Setup takes about 2 minutes. You'll sign in with Rhombus or paste an API key.</p>
@@ -312,7 +313,27 @@ Backups/<br>
   </div>
 </section>
 
-<section>
+<section id="nas">
+  <div class="wrap">
+    <h2>Linux, NAS &amp; always-on boxes</h2>
+    <p class="section-sub">The same app as a Docker container — backups run around the clock with no computer left on.</p>
+    <div class="code-card">
+docker run -d --name rhombus-backup-buddy \<br>
+&nbsp;&nbsp;-p 8600:8600 \<br>
+&nbsp;&nbsp;-v "$PWD/config:/config" \<br>
+&nbsp;&nbsp;-v /path/to/backups:/backups \<br>
+&nbsp;&nbsp;--restart unless-stopped \<br>
+&nbsp;&nbsp;ghcr.io/pulisse/rhombus-backup-buddy:latest
+    </div>
+    <p style="text-align:center;margin-top:18px;font-size:14.5px">
+      Works on any Linux server or NAS (amd64 &amp; arm64) — then open <code>http://&lt;host&gt;:8600</code> on your network.<br>
+      Step-by-step guide, UGREEN walkthrough, and remote-deploy options:
+      <a href="https://github.com/pulisse/rhombus-footage-backup/blob/main/docs/DOCKER.md" style="color:var(--accent)">docs/DOCKER.md</a>
+    </p>
+  </div>
+</section>
+
+<section class="alt">
   <div class="wrap">
     <h2>Common questions</h2>
     <p class="section-sub"></p>
